@@ -7,13 +7,14 @@ exception Impure of Range.t
 let (@>) = Subst.apply_to_mono_type
 let (@@) = Subst.compose
 let fresh () =
-  let i = Typevar.fresh () in ((TypeVariable(i), Range.dummy "fresh"), i)
+  let i = Typevar.fresh () in ((TypeVariable(ref (Unbound(i))), Range.dummy "fresh"), i)
 
 
 let rec subst_mono_type ty i tynew =
   let iter t = subst_mono_type t i tynew in
     match ty with
-    | (TypeVariable(j), _)  when Typevar.eq i j       -> tynew
+    | (TypeVariable({contents= Unbound(j)}), _)  when Typevar.eq i j       -> tynew
+    | (TypeVariable({contents= Link(tysub)}), _) -> subst_mono_type tysub i tynew
     | (FuncType(tydom, tycod, tyans1, tyans2), tyrng) -> (FuncType(iter tydom, iter tycod, iter tyans1, iter tyans2), tyrng)
     | _                                               -> ty
 

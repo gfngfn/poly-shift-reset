@@ -6,7 +6,7 @@ let type_environment =
   let bt = (BoolType, Range.dummy "prim-bool") in
   let ft tydom tycod tya = (FuncType(tydom, tycod, tya, tya), Range.dummy "prim-func") in
   let v n = Typevar.of_int n in
-  let tv n = (TypeVariable(v n), Range.dummy "prim-var") in
+  let tv n = (TypeVariable({contents= Unbound(v n)}), Range.dummy "prim-var") in
     List.fold_right (fun (varnm, pty) tyenv -> Typeenv.add tyenv varnm pty) [
       ("+",  Forall(v (-1), Forall(v (-2), Mono(ft it (ft it it (tv (-2))) (tv (-1))))));
       ("-",  Forall(v (-1), Forall(v (-2), Mono(ft it (ft it it (tv (-2))) (tv (-1))))));
