@@ -1,5 +1,8 @@
 open Types
 
+exception InclusionError of mono_type * mono_type
+exception ContradictionError of mono_type * mono_type
+
 type t
 
 val empty : t

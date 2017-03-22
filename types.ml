@@ -6,13 +6,10 @@ type variable_name = string
 
 type mono_type = mono_type_main * Range.t
 and mono_type_main =
-  | TypeVariable of type_variable_info ref
+  | TypeVariable of Typevar.t
   | IntType
   | BoolType
   | FuncType     of mono_type * mono_type * mono_type * mono_type
-and type_variable_info =
-  | Unbound of Typevar.t
-  | Link of mono_type
 
 
 type poly_type =
@@ -65,14 +62,12 @@ let rec string_of_mono_type (srcty : mono_type) =
   let iter = string_of_mono_type in
   let iter_enclose srcty =
     match srcty with
-    | ( (FuncType(_, _, _, _), _)
-      | (TypeVariable({contents= Link((FuncType(_, _, _, _), _))}), _) )  -> "(" ^ (iter srcty) ^ ")"
+    | (FuncType(_, _, _, _), _) -> "(" ^ (iter srcty) ^ ")"
     | _                         -> iter srcty
   in
   let (srctymain, _) = srcty in
     match srctymain with
-    | TypeVariable({contents= Unbound(i)})   -> Typevar.to_string i
-    | TypeVariable({contents= Link(ty)})     -> iter ty
+    | TypeVariable(i)                        -> Typevar.to_string i
     | IntType                                -> "int"
     | BoolType                               -> "bool"
     | FuncType(tydom, tycod, tyans1, tyans2) -> (iter_enclose tydom) ^ " / " ^ (iter_enclose tyans1) ^

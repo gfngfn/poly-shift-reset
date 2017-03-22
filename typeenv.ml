@@ -32,8 +32,7 @@ let make_polymorphic tyenv ty =
   let rec listup ty =
     let (tymain, _) = ty in
       match tymain with
-      | TypeVariable({contents= Unbound(i)}) -> if List.mem i (!quantifiables) then quantifiables := i :: (!quantifiables) else ()
-      | TypeVariable({contents= Link(ty)}) -> listup ty
+      | TypeVariable(i) -> if List.mem i (!quantifiables) then quantifiables := i :: (!quantifiables) else ()
       | FuncType(tydom, tycod, tyans1, tyans2) ->
           begin listup tydom ; listup tycod ; listup tyans1 ; listup tyans2 end
       | _ -> ()
