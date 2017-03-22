@@ -5,20 +5,25 @@ type t = (variable_name * poly_type) list
 
 let empty = []
 
+(*
+let show tyenv = List.fold_right (fun (v, p) s -> "[" ^ v ^ " : " ^ (string_of_poly_type p) ^ "]" ^ s) tyenv ""
+*)
 
 let add (tyenv : t) (varnm : variable_name) (pty : poly_type) =
   let rec aux acc lst =
     match lst with
-    | []             -> (varnm, pty) :: []
-    | (v, p) :: tail -> if v = varnm then List.rev_append acc ((varnm, pty) :: tail) else aux ((v, p) :: acc) tail
+    | []                             -> List.rev_append acc ((varnm, pty) :: [])
+    | (v, p) :: tail  when v = varnm -> List.rev_append acc ((varnm, pty) :: tail)
+    | (v, p) :: tail                 -> aux ((v, p) :: acc) tail
   in
     aux [] tyenv
 
 
 let rec find tyenv varnm =
   match tyenv with
-  | []             -> None
-  | (v, p) :: tail -> if v = varnm then Some(p) else find tail varnm
+  | []                             -> None
+  | (v, p) :: tail  when v = varnm -> Some(p)
+  | _ :: tail                      -> find tail varnm
 
 
 let quantifiables : Typevar.t list ref = ref []

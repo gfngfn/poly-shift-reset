@@ -72,6 +72,12 @@ let rec string_of_mono_type (srcty : mono_type) =
     | FuncType(tydom, tycod, tyans1, tyans2) -> (iter_enclose tydom) ^ " / " ^ (iter_enclose tyans1) ^
                                                   " -> " ^ (iter_enclose tycod) ^ " / " ^ (iter tyans2)
 
+let rec string_of_poly_type (pty : poly_type) =
+  let iter = string_of_poly_type in
+  match pty with
+  | Mono(ty) -> string_of_mono_type ty
+  | Forall(i, ptysub) -> "(" ^ (Typevar.to_string i) ^ ". " ^ (iter ptysub) ^ ")"
+
 (*
 let rec string_of_abstract_term (ast : abstract_term) =
   let iter = string_of_abstract_term in

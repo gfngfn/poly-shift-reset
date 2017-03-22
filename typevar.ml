@@ -17,3 +17,6 @@ let to_string (i : t) =
 
 
 let eq (i : t) (j : t) = (i = j)
+
+
+let of_int (n : int) = n
