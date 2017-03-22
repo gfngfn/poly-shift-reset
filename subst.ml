@@ -32,6 +32,23 @@ let rec apply_to_mono_type (theta : t) (ty : mono_type) =
     | _ -> ty
 
 
+let rec apply_to_abstract_term (theta : t) (ast : abstract_term) =
+  let iter = apply_to_abstract_term theta in
+  let (astmain, ty) = ast in
+  let astmainnew =
+    match astmain with
+    | ( Var(_) | IntConst(_) | BoolConst(_) ) -> astmain
+    | Apply(ast1, ast2)                       -> Apply(iter ast1, iter ast2)
+    | Lambda(varnm, ast1)                     -> Lambda(varnm, iter ast1)
+    | FixPoint(varnm, ast1)                   -> FixPoint(varnm, iter ast1)
+    | LetIn(varnm, ast1, ast2)                -> LetIn(varnm, iter ast1, iter ast2)
+    | IfThenElse(ast0, ast1, ast2)            -> IfThenElse(iter ast0, iter ast1, iter ast2)
+    | Shift(varnm, ast1)                      -> Shift(varnm, iter ast1)
+    | Reset(ast1)                             -> Reset(iter ast1)
+  in
+    (astmainnew, apply_to_mono_type theta ty)
+
+
 let compose (theta2 : t) (theta1 : t) =
   let theta1new = List.map (fun (i, ty) -> (i, apply_to_mono_type theta2 ty)) theta1 in
   let theta2new = List.filter (fun (i, ty) -> match find theta1 i with None -> true | Some(_) -> false) theta2 in
@@ -48,7 +65,7 @@ let rec occurs (i : Typevar.t) ((tymain, _) : mono_type) =
 
 let rec unify_sub (theta : t) (lst : (mono_type * mono_type) list) =
   match lst with
-  | [] -> theta
+  | []                                                     -> theta
   | (((tymain1, _) as ty1), ((tymain2, _) as ty2)) :: tail ->
       begin
         match (tymain1, tymain2) with

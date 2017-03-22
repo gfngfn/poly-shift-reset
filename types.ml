@@ -29,7 +29,8 @@ and source_term_main =
   | SrcIntConst   of int
   | SrcBoolConst  of bool
 
-type abstract_term =
+type abstract_term = abstract_term_main * mono_type
+and abstract_term_main =
   | Var        of variable_name
   | Apply      of abstract_term * abstract_term
   | Lambda     of variable_name * abstract_term
@@ -79,25 +80,22 @@ let rec string_of_poly_type (pty : poly_type) =
   | Mono(ty) -> string_of_mono_type ty
   | Forall(i, ptysub) -> "(" ^ (Typevar.to_string i) ^ ". " ^ (iter ptysub) ^ ")"
 
-(*
+
 let rec string_of_abstract_term (ast : abstract_term) =
   let iter = string_of_abstract_term in
-  let (astmain, layer) = ast in
-  let strlayer s = "(" ^ (string_of_int layer) ^ "| " ^ s ^ ")" in
+  let (astmain, ty) = ast in
     match astmain with
-    | OrdContentOf(ovnm)           -> strlayer ovnm
-    | PermContentOf(pvnm)          -> strlayer pvnm
-    | Apply(ast1, ast2)            -> strlayer ((iter ast1) ^ " " ^ (iter ast2))
-    | Lambda(varnm, ast1)           -> strlayer ("\\" ^ varnm ^ ". " ^ (iter ast1))
-    | FixPoint(varnm, ast1)         -> strlayer ("fix " ^ varnm ^ ". " ^ (iter ast1))
-    | IfThenElse(ast0, ast1, ast2) -> strlayer ("if " ^ (iter ast0) ^ " then " ^ (iter ast1) ^ " else " ^ (iter ast2))
-    | Shift(varnm, ast1)                   -> strlayer ("next " ^ (iter ast1))
-    | Prev(ast1)                   -> strlayer ("prev " ^ (iter ast1))
-    | Box(ast1)                    -> strlayer ("box " ^ (iter ast1))
-    | Unbox(pvnm, i, ast1, ast2)   -> strlayer ("unbox " ^ pvnm ^ " =" ^ (string_of_int i) ^ " " ^ (iter ast1) ^ " in " ^ (iter ast2))
-    | IntConst(ic)                 -> strlayer (string_of_int ic)
-    | BoolConst(bc)                -> strlayer (string_of_bool bc)
-*)
+    | Var(varnm)                   -> varnm
+    | Apply(ast1, ast2)            -> (iter ast1) ^ " " ^ (iter ast2)
+    | Lambda(varnm, ast1)          -> "((\\" ^ varnm ^ ". " ^ (iter ast1) ^ ") : " ^ (string_of_mono_type ty) ^ ")"
+    | FixPoint(varnm, ast1)        -> "(fix " ^ varnm ^ ". " ^ (iter ast1) ^ ")"
+    | LetIn(varnm, ast1, ast2)     -> "(let " ^ varnm ^ " = " ^ (iter ast1) ^ " in " ^ (iter ast2) ^ ")"
+    | IfThenElse(ast0, ast1, ast2) -> "(if " ^ (iter ast0) ^ " then " ^ (iter ast1) ^ " else " ^ (iter ast2) ^ ")"
+    | Shift(varnm, ast1)           -> "(shift " ^ varnm ^ ". " ^ (iter ast1) ^ ")"
+    | Reset(ast1)                  -> "(reset " ^ (iter ast1) ^ ")"
+    | IntConst(ic)                 -> string_of_int ic
+    | BoolConst(bc)                -> string_of_bool bc
+
 
 let rec erase_range_of_mono_type (srcty : mono_type) =
   let (srctymain, _) = srcty in

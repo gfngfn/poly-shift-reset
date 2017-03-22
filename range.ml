@@ -20,7 +20,7 @@ let message rng =
 let to_string rng =
   let s = string_of_int in
     match rng with
-    | Dummy(msg)                   -> "dummy range '" ^ msg ^ "'"
+    | Dummy(msg)                   -> "(dummy range '" ^ msg ^ "')"
     | Normal(ln1, pos1, ln2, pos2) ->
         if ln1 = ln2 then
           "line " ^ (s ln1) ^ ", characters " ^ (s pos1) ^ "-" ^ (s pos2)

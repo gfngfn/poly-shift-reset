@@ -39,24 +39,29 @@ let rec typecheck_pure (thetapre : Subst.t) (tyenv : Typeenv.t) (sast : source_t
     | SrcVar(varnm) ->
         begin
           match Typeenv.find tyenv varnm with
-          | Some(pty) -> (Var(varnm), thetapre @> (instantiate pty), thetapre)
-          | None     -> raise (UndefinedVariable(varnm, rng))
+          | None      -> raise (UndefinedVariable(varnm, rng))
+          | Some(pty) ->
+              let (tyresmain, _) = (thetapre @> (instantiate pty)) in
+              let tyres = (tyresmain, rng) in
+                ((Var(varnm), tyres), tyres, thetapre)
         end
 
     | SrcLambda((varnm, varrng), sast1) ->
         let (vdom, _) = fresh () in
         let (vans, _) = fresh () in
         let (e1, ty1, tyans1, theta1) = typecheck thetapre (Typeenv.add tyenv varnm (Mono(vdom))) vans sast1 in
-          (Lambda(varnm, e1), (FuncType(theta1 @> vdom, ty1, theta1 @> vans, tyans1), rng), theta1)
+        let tyres = (FuncType(theta1 @> vdom, ty1, theta1 @> vans, tyans1), rng) in
+          ((Lambda(varnm, e1), tyres), tyres, theta1)
 
     | SrcReset(sast1) ->
         let (vG, _) = fresh () in
         let (e1, ty1, tyans1, theta1) = typecheck thetapre tyenv vG sast1 in
         let thetaU = Subst.unify vG tyans1 in
-          (Reset(e1), ty1, thetaU @@ theta1)
+        let tyres = thetaU @> ty1 in
+          ((Reset(e1), tyres), tyres, thetaU @@ theta1)
 
-    | SrcIntConst(ic)  -> (IntConst(ic), (IntType, rng), thetapre)
-    | SrcBoolConst(bc) -> (BoolConst(bc), (BoolType, rng), thetapre)
+    | SrcIntConst(ic)  -> let tyres = (IntType, rng) in ((IntConst(ic), tyres), tyres, thetapre)
+    | SrcBoolConst(bc) -> let tyres = (BoolType, rng) in ((BoolConst(bc), tyres), tyres, thetapre)
 
     | _ -> raise (Impure(rng))
 
@@ -74,13 +79,14 @@ and typecheck (thetapre : Subst.t) (tyenv : Typeenv.t) (tyans : mono_type) (sast
         let (e1, ty1, tyD, theta1) = typecheck theta2 tyenv tyG sast1 in
         let (vR, _) = fresh () in
         let thetaU = Subst.unify ty1 (FuncType(theta1 @> ty2, vR, tyans, theta1 @> vB), Range.dummy "tc-apply") in
-          (Apply(e1, e2), thetaU @> vR, thetaU @> tyD, thetaU @@ theta1)
+        let tyres = thetaU @> vR in
+          ((Apply(e1, e2), tyres), tyres, thetaU @> tyD, thetaU @@ theta1)
 
     | SrcLetIn((varnm, varrng), sast1, sast2) ->
         let (e1, ty1, theta1) = typecheck_pure thetapre tyenv sast1 in
         let pty1 = Typeenv.make_polymorphic tyenv ty1 in
         let (e2, ty2, tyB, theta2) = typecheck theta1 (Typeenv.add tyenv varnm pty1) tyans sast2 in
-          (LetIn(varnm, e1, e2), ty2, tyB, theta2)
+          ((LetIn(varnm, e1, e2), ty2), ty2, tyB, theta2)
 
     | SrcShift((varnm, varrng), sast1) ->
         let (vT, _) = fresh () in
@@ -89,4 +95,5 @@ and typecheck (thetapre : Subst.t) (tyenv : Typeenv.t) (tyans : mono_type) (sast
         let (vG, _) = fresh () in
         let (e1, ty1, tyB, theta1) = typecheck thetapre (Typeenv.add tyenv varnm pty) vG sast1 in
         let thetaU = Subst.unify (theta1 @> vG) ty1 in
-          (Shift(varnm, e1), thetaU @> vT, thetaU @> tyB, thetaU @@ theta1)
+        let tyres = thetaU @> vT in
+          ((Shift(varnm, e1), tyres), tyres, thetaU @> tyB, thetaU @@ theta1)
