@@ -9,8 +9,11 @@ let initialize () =
 
 let fresh () =
   current_number := !current_number + 1 ;
-  !current_number
+    !current_number
 
 
-let to_string i =
+let to_string (i : t) =
   "'" ^ (string_of_int i)
+
+
+let eq (i : t) (j : t) = (i = j)

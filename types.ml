@@ -28,8 +28,7 @@ and source_term_main =
   | SrcIntConst   of int
   | SrcBoolConst  of bool
 
-type abstract_term = abstract_term_main * int
-and abstract_term_main =
+type abstract_term =
   | Var        of variable_name
   | Apply      of abstract_term * abstract_term
   | Lambda     of variable_name * abstract_term
