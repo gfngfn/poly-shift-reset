@@ -89,29 +89,34 @@ let rec unify_sub (acctheta : t) (eqnlst : (mono_type * mono_type) list) =
   let _ = List.iter (fun (ty1, ty2) -> print_string ("[" ^ (string_of_mono_type ty1) ^ "] = [" ^ (string_of_mono_type ty2) ^ "], ")) neweqnlst in (*for debug*)
   let _ = print_endline "$" in (*for debug*)
   match neweqnlst with
-  | []                                                     -> acctheta
-  | (((tymain1, _) as ty1), ((tymain2, _) as ty2)) :: tail ->
+  | []                                                           -> acctheta
+  | (((tymain1, rng1) as ty1), ((tymain2, rng2) as ty2)) :: tail ->
       begin
         match (tymain1, tymain2) with
+        | (IntType, IntType) -> unify_sub acctheta tail
+
+        | (BoolType, BoolType) -> unify_sub acctheta tail
+
         | (TypeVariable(i1), TypeVariable(i2)) ->
             if Typevar.eq i1 i2 then
               unify_sub acctheta tail
             else
-              unify_sub (add (replace acctheta i1 ty2) i1 ty2) tail
+              let ty2new = if Range.is_dummy rng2 && not (Range.is_dummy rng1) then (tymain2, rng1) else ty2 in
+                unify_sub (add (replace acctheta i1 ty2new) i1 ty2new) tail
 
         | (TypeVariable(i1), _) ->
             if occurs i1 ty2 then raise InternalInclusionError else
-              unify_sub (add (replace acctheta i1 ty2) i1 ty2) tail
+              let ty2new = if Range.is_dummy rng2 && not (Range.is_dummy rng1) then (tymain2, rng1) else ty2 in
+                unify_sub (add (replace acctheta i1 ty2new) i1 ty2new) tail
 
         | (_, TypeVariable(i2)) ->
             if occurs i2 ty1 then raise InternalInclusionError else
-              unify_sub (add (replace acctheta i2 ty1) i2 ty1) tail
+              let ty1new = if Range.is_dummy rng1 && not (Range.is_dummy rng2) then (tymain1, rng2) else ty1 in
+                unify_sub (add (replace acctheta i2 ty1new) i2 ty1new) tail
 
         | (FuncType(tydom1, tycod1, tya1, tyb1), FuncType(tydom2, tycod2, tya2, tyb2)) ->
             unify_sub acctheta (List.append [(tydom1, tydom2); (tycod1, tycod2); (tya1, tya2); (tyb1, tyb2)] tail)
 
-        | (IntType, IntType) -> unify_sub acctheta tail
-        | (BoolType, BoolType) -> unify_sub acctheta tail
         | _                  -> raise InternalContradictionError
       end
 

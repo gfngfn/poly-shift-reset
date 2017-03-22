@@ -1,7 +1,6 @@
 open Types
 
 exception UndefinedVariable of variable_name * Range.t
-exception Impure of Range.t
 
 
 let (@>) = Subst.apply_to_mono_type
@@ -16,6 +15,12 @@ let rec instantiate (pty : poly_type) =
   | Forall(i, ptysub) ->
       let (vN, _) = fresh () in
         instantiate (subst_poly_type ptysub i vN)
+
+
+let is_pure ((sastmain, _) : source_term) =
+  match sastmain with
+  | ( SrcVar(_) | SrcLambda(_, _) | SrcReset(_, _) | SrcIntConst(_) | SrcBoolConst(_) ) -> true
+  | _                                                                                   -> false
 
 
 let rec typecheck_pure (thetapre : Subst.t) (tyenv : Typeenv.t) (sast : source_term) =
@@ -49,13 +54,13 @@ let rec typecheck_pure (thetapre : Subst.t) (tyenv : Typeenv.t) (sast : source_t
     | SrcIntConst(ic)  -> let tyres = (IntType, rng) in ((IntConst(ic), tyres), tyres, thetapre)
     | SrcBoolConst(bc) -> let tyres = (BoolType, rng) in ((BoolConst(bc), tyres), tyres, thetapre)
 
-    | _ -> raise (Impure(rng))
+    | _ -> assert false
 
 
 and typecheck (thetapre : Subst.t) (tyenv : Typeenv.t) (tyans : mono_type) (sast : source_term) =
   let (sastmain, rng) = sast in
     match sastmain with
-    | ( SrcVar(_) | SrcLambda(_, _) | SrcReset(_, _) | SrcIntConst(_) | SrcBoolConst(_) ) ->
+    | _  when is_pure sast ->
         let (e, ty, theta) = typecheck_pure thetapre tyenv sast in
           (e, ty, tyans, theta)
 
@@ -72,11 +77,14 @@ and typecheck (thetapre : Subst.t) (tyenv : Typeenv.t) (tyans : mono_type) (sast
           ((Apply(e1, e2), tyres), tyres, thetaU @> tyD, thetaU @@ theta1)
 
     | SrcLetIn((varnm, varrng), sast1, sast2) ->
-        let (e1, ty1, theta1) = typecheck_pure thetapre tyenv sast1 in
-        let pty1 = Typeenv.make_polymorphic tyenv ty1 in
-        let _ = print_endline ("Let " ^ varnm ^ " : " ^ (string_of_poly_type pty1)) in (*for debug*)
-        let (e2, ty2, tyB, theta2) = typecheck theta1 (Typeenv.add tyenv varnm pty1) tyans sast2 in
-          ((LetIn(varnm, e1, e2), ty2), ty2, tyB, theta2)
+        if is_pure sast1 then
+          let (e1, ty1, theta1) = typecheck_pure thetapre tyenv sast1 in
+          let pty1 = Typeenv.make_polymorphic tyenv ty1 in
+          let _ = print_endline ("Let " ^ varnm ^ " : " ^ (string_of_poly_type pty1)) in (*for debug*)
+          let (e2, ty2, tyB, theta2) = typecheck theta1 (Typeenv.add tyenv varnm pty1) tyans sast2 in
+            ((LetIn(varnm, e1, e2), ty2), ty2, tyB, theta2)
+        else
+          typecheck thetapre tyenv tyans (SrcApply((SrcLambda((varnm, varrng), sast2), Range.dummy "tc-impure-let"), sast1), rng)
 
     | SrcShift((varnm, varrng), sast1) ->
         let (vT, _) = fresh () in
@@ -87,3 +95,5 @@ and typecheck (thetapre : Subst.t) (tyenv : Typeenv.t) (tyans : mono_type) (sast
         let thetaU = Subst.unify (theta1 @> vG) ty1 in
         let tyres = thetaU @> vT in
           ((Shift(varnm, e1), tyres), tyres, thetaU @> tyB, thetaU @@ theta1)
+
+    | _ -> assert false

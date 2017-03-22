@@ -64,7 +64,7 @@ let rec string_of_source_term sast =
     match sastmain with
     | SrcVar(varnm)                         -> varnm
     | SrcApply(sast1, sast2)                -> "(" ^ (iter sast1) ^ " " ^ (iter sast2) ^ ")"
-    | SrcLambda((varnm, _), sast1)          -> "(fun " ^ varnm ^ ". " ^ (iter sast1) ^ ")"
+    | SrcLambda((varnm, _), sast1)          -> "(\\" ^ varnm ^ ". " ^ (iter sast1) ^ ")"
     | SrcFixPoint((varnm, _), sast1)        -> "(fix " ^ varnm ^ ". " ^ (iter sast1) ^ ")"
     | SrcLetIn((varnm, _), sast1, sast2)    -> "(let " ^ varnm ^ " = " ^ (iter sast1) ^ " in " ^ (iter sast2) ^ ")"
     | SrcIfThenElse(sast0, sast1, sast2)    -> "(if " ^ (iter sast0) ^ " then " ^ (iter sast1) ^ " else " ^ (iter sast2) ^ ")"
@@ -101,7 +101,7 @@ let rec string_of_abstract_term (ast : abstract_term) =
   let (astmain, ty) = ast in
     match astmain with
     | Var(varnm)                   -> varnm
-    | Apply(ast1, ast2)            -> (iter ast1) ^ " " ^ (iter ast2)
+    | Apply(ast1, ast2)            -> "(" ^ (iter ast1) ^ " " ^ (iter ast2) ^ ")"
     | Lambda(varnm, ast1)          -> "((\\" ^ varnm ^ ". " ^ (iter ast1) ^ ") : " ^ (string_of_mono_type ty) ^ ")"
     | FixPoint(varnm, ast1)        -> "(fix " ^ varnm ^ ". " ^ (iter ast1) ^ ")"
     | LetIn(varnm, ast1, ast2)     -> "(let " ^ varnm ^ " = " ^ (iter ast1) ^ " in " ^ (iter ast2) ^ ")"

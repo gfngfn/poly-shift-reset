@@ -46,11 +46,6 @@ let _ =
             NormalLine("at " ^ (Range.to_string rng));
             NormalLine("undefined variable '" ^ varnm ^ "'.");
           ]
-      | Typecheck.Impure(rng) ->
-          report_error "Typechecker" [
-            NormalLine("at " ^ (Range.to_string rng));
-            NormalLine("impure expression.");
-          ]
 
       | Subst.InclusionError(ty1, ty2) ->
           let (range_desc, tyindeed, tyreq, additional) = generate_description ty1 ty2 in
