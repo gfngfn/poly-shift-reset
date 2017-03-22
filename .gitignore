@@ -1,0 +1,8 @@
+*~
+*.o
+*.cmi
+*.cmx
+polysr.exe
+lexer.ml
+parser.mli
+parser.ml
