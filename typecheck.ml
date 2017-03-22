@@ -10,22 +10,7 @@ let fresh () =
   let i = Typevar.fresh () in ((TypeVariable(i), Range.dummy "fresh"), i)
 
 
-let rec subst_mono_type ty i tynew =
-  let iter t = subst_mono_type t i tynew in
-    match ty with
-    | (TypeVariable(j), _)        when Typevar.eq i j -> tynew
-    | (FuncType(tydom, tycod, tyans1, tyans2), tyrng) -> (FuncType(iter tydom, iter tycod, iter tyans1, iter tyans2), tyrng)
-    | _                                               -> ty
-
-
-let rec subst_poly_type (pty : poly_type) (i : Typevar.t) (tynew : mono_type) =
-  match pty with
-  | Mono(ty)                               -> Mono(subst_mono_type ty i tynew)
-  | Forall(j, ptysub)  when Typevar.eq i j -> pty
-  | Forall(j, ptysub)                      -> Forall(j, subst_poly_type ptysub i tynew)
-
-
-let rec instantiate pty =
+let rec instantiate (pty : poly_type) =
   match pty with
   | Mono(ty) -> ty
   | Forall(i, ptysub) ->
@@ -43,6 +28,7 @@ let rec typecheck_pure (thetapre : Subst.t) (tyenv : Typeenv.t) (sast : source_t
           | Some(pty) ->
               let (tyresmain, _) = (thetapre @> (instantiate pty)) in
               let tyres = (tyresmain, rng) in
+              let _ = print_endline ("Var " ^ varnm ^ " : " ^ (string_of_mono_type tyres)) in (*for debug*)
                 ((Var(varnm), tyres), tyres, thetapre)
         end
 
@@ -78,13 +64,17 @@ and typecheck (thetapre : Subst.t) (tyenv : Typeenv.t) (tyans : mono_type) (sast
         let (e2, ty2, tyG, theta2) = typecheck thetapre tyenv vB sast2 in
         let (e1, ty1, tyD, theta1) = typecheck theta2 tyenv tyG sast1 in
         let (vR, _) = fresh () in
+        let _ = print_endline ("App1 " ^ (string_of_source_term sast) ^ " : " ^ (string_of_mono_type vR)) in (*for debug*)
         let thetaU = Subst.unify ty1 (FuncType(theta1 @> ty2, vR, tyans, theta1 @> vB), Range.dummy "tc-apply") in
         let tyres = thetaU @> vR in
+        let _ = print_endline ("App2 " ^ (string_of_source_term sast) ^ " : " ^ (string_of_mono_type tyres)) in (*for debug*)
+        let _ = Subst.show (thetaU @@ theta1) in (*for debug*)
           ((Apply(e1, e2), tyres), tyres, thetaU @> tyD, thetaU @@ theta1)
 
     | SrcLetIn((varnm, varrng), sast1, sast2) ->
         let (e1, ty1, theta1) = typecheck_pure thetapre tyenv sast1 in
         let pty1 = Typeenv.make_polymorphic tyenv ty1 in
+        let _ = print_endline ("Let " ^ varnm ^ " : " ^ (string_of_poly_type pty1)) in (*for debug*)
         let (e2, ty2, tyB, theta2) = typecheck theta1 (Typeenv.add tyenv varnm pty1) tyans sast2 in
           ((LetIn(varnm, e1, e2), ty2), ty2, tyB, theta2)
 

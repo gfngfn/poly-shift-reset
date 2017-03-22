@@ -43,6 +43,21 @@ and abstract_term_main =
   | BoolConst  of bool
 
 
+let rec subst_mono_type (ty : mono_type) (i : Typevar.t) (tynew : mono_type) =
+  let iter t = subst_mono_type t i tynew in
+    match ty with
+    | (TypeVariable(j), _)        when Typevar.eq i j -> tynew
+    | (FuncType(tydom, tycod, tyans1, tyans2), tyrng) -> (FuncType(iter tydom, iter tycod, iter tyans1, iter tyans2), tyrng)
+    | _                                               -> ty
+
+
+let rec subst_poly_type (pty : poly_type) (i : Typevar.t) (tynew : mono_type) =
+  match pty with
+  | Mono(ty)                               -> Mono(subst_mono_type ty i tynew)
+  | Forall(j, ptysub)  when Typevar.eq i j -> pty
+  | Forall(j, ptysub)                      -> Forall(j, subst_poly_type ptysub i tynew)
+
+
 let rec string_of_source_term sast =
   let iter = string_of_source_term in
   let (sastmain, _) = sast in

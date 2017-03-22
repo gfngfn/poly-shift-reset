@@ -8,6 +8,12 @@ exception ContradictionError of mono_type * mono_type
 type t = (Typevar.t * mono_type) list
 
 
+let show theta =
+  print_endline "+---- ---- ---- ----" ;
+  List.iter (fun (i, ty) -> print_endline ("| " ^ (Typevar.to_string i) ^ " = " ^ (string_of_mono_type ty))) theta ;
+  print_endline "+---- ---- ---- ----"
+
+
 let empty = []
 
 
@@ -55,42 +61,64 @@ let compose (theta2 : t) (theta1 : t) =
     List.append theta2new theta1new
 
 
+let add (theta : t) (i : Typevar.t) (ty : mono_type) =
+  let rec aux acc lst =
+    match lst with
+    | []                                  -> (i, ty) :: theta
+    | (j, t) :: tail  when Typevar.eq i j -> List.rev_append acc ((i, ty) :: tail)
+    | (j, t) :: tail                      -> aux ((j, t) :: acc) tail
+  in
+    aux [] theta
+
+
+let rec replace (theta : t) (i : Typevar.t) (tynew : mono_type) =
+  List.map (fun (j, t) -> (j, subst_mono_type t i tynew)) theta
+
+
 let rec occurs (i : Typevar.t) ((tymain, _) : mono_type) =
   let iter = occurs i in
-  match tymain with
-  | TypeVariable(j)  when Typevar.eq i j -> true
-  | FuncType(t1, t2, t3, t4)             -> (iter t1) || (iter t2) || (iter t3) || (iter t4)
-  | _                                    -> false
+    match tymain with
+    | TypeVariable(j)  when Typevar.eq i j -> true
+    | FuncType(t1, t2, t3, t4)             -> (iter t1) || (iter t2) || (iter t3) || (iter t4)
+    | _                                    -> false
 
 
-let rec unify_sub (theta : t) (lst : (mono_type * mono_type) list) =
-  match lst with
-  | []                                                     -> theta
+let rec unify_sub (acctheta : t) (eqnlst : (mono_type * mono_type) list) =
+  let neweqnlst = List.map (fun (ty1, ty2) -> (apply_to_mono_type acctheta ty1, apply_to_mono_type acctheta ty2)) eqnlst in
+  let _ = show acctheta in (*for debug*)
+  let _ = List.iter (fun (ty1, ty2) -> print_string ("[" ^ (string_of_mono_type ty1) ^ "] = [" ^ (string_of_mono_type ty2) ^ "], ")) neweqnlst in (*for debug*)
+  let _ = print_endline "$" in (*for debug*)
+  match neweqnlst with
+  | []                                                     -> acctheta
   | (((tymain1, _) as ty1), ((tymain2, _) as ty2)) :: tail ->
       begin
         match (tymain1, tymain2) with
         | (TypeVariable(i1), TypeVariable(i2)) ->
-            if Typevar.eq i1 i2 then unify_sub theta tail else
-              unify_sub (compose [(i1, ty2)] theta) tail
+            if Typevar.eq i1 i2 then
+              unify_sub acctheta tail
+            else
+              unify_sub (add (replace acctheta i1 ty2) i1 ty2) tail
 
         | (TypeVariable(i1), _) ->
             if occurs i1 ty2 then raise InternalInclusionError else
-              unify_sub (compose [(i1, ty2)] theta) tail
+              unify_sub (add (replace acctheta i1 ty2) i1 ty2) tail
 
         | (_, TypeVariable(i2)) ->
             if occurs i2 ty1 then raise InternalInclusionError else
-              unify_sub (compose [(i2, ty1)] theta) tail
-              
-        | (FuncType(tydom1, tycod1, tya1, tyb1), FuncType(tydom2, tycod2, tya2, tyb2)) -> unify_sub theta (List.append [(tydom1, tydom2); (tycod1, tycod2); (tya1, tya2); (tyb1, tyb2)] tail)
+              unify_sub (add (replace acctheta i2 ty1) i2 ty1) tail
 
-        | (IntType, IntType) -> unify_sub theta tail
-        | (BoolType, BoolType) -> unify_sub theta tail
+        | (FuncType(tydom1, tycod1, tya1, tyb1), FuncType(tydom2, tycod2, tya2, tyb2)) ->
+            unify_sub acctheta (List.append [(tydom1, tydom2); (tycod1, tycod2); (tya1, tya2); (tyb1, tyb2)] tail)
+
+        | (IntType, IntType) -> unify_sub acctheta tail
+        | (BoolType, BoolType) -> unify_sub acctheta tail
         | _                  -> raise InternalContradictionError
       end
 
 
 let unify (ty1 : mono_type) (ty2 : mono_type) =
   try
+    let _ = print_endline ("Unify [" ^ (string_of_mono_type ty1) ^ "] = [" ^ (string_of_mono_type ty2) ^ "]") in (*for debug*)
     unify_sub empty [(ty1, ty2)]
   with
   | InternalInclusionError     -> raise (InclusionError(ty1, ty2))
