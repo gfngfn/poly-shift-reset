@@ -1,7 +1,7 @@
 %{
   open Types
 
-  type range_kind = Token of Range.t | Source of source_tree
+  type range_kind = Token of Range.t | Source of source_term
 
 
   let make_range rngknd1 rngknd2 =
@@ -17,6 +17,9 @@
     let rng = make_range (Source left) (Source right) in
       (SrcApply((SrcApply((SrcVar(opnm), oprng), left), Range.dummy "lor"), right), rng)
 
+  let make_abstraction params sast =
+    List.fold_right (fun param sa -> (SrcLambda(param, sa), Range.dummy "make_abstraction")) params sast
+
 %}
 
 %token EOI
@@ -28,7 +31,7 @@
 %token<Range.t> PLUS MINUS TIMES DIVIDES EQUAL GT LT GEQ LEQ LAND LOR TRUE FALSE
 
 %start main
-%type<Types.source_tree> main
+%type<Types.source_term> main
 
 %%
 
@@ -36,15 +39,19 @@ main:
   | xplet EOI { $1 }
 ;
 xplet:
-  | LET VAR DEFEQ xplet IN xplet {
-        let rng = make_range (Token $1) (Source $6) in
-          (SrcLetIn($2, $4, $6), rng)
+  | LET VAR params DEFEQ xplet IN xplet {
+        let rng = make_range (Token $1) (Source $7) in
+          (SrcLetIn($2, make_abstraction $3 $5, $7), rng)
       }
-  | LETREC VAR DEFEQ xplet IN xplet {
-        let rng = make_range (Token $1) (Source $6) in
-          (SrcLetIn($2, (SrcFixPoint($2, $4), Range.dummy "letrec"), $6), rng)
+  | LETREC VAR params DEFEQ xplet IN xplet {
+        let rng = make_range (Token $1) (Source $7) in
+          (SrcLetIn($2, (SrcFixPoint($2, make_abstraction $3 $5), Range.dummy "letrec"), $7), rng)
       }
   | xpif { $1 }
+;
+params: /* -> (variable_name * Range.t) list */
+  |            { [] }
+  | VAR params { $1 :: $2 }
 ;
 xpif:
   | IF xplet THEN xplet ELSE xplet { (SrcIfThenElse($2, $4, $6), make_range (Token $1) (Source $6)) }

@@ -1,5 +1,5 @@
-polysr.exe: range.mli range.ml types.ml lexer.mll parser.mly
+polysr.exe: typevar.mli typevar.ml range.mli range.ml types.ml lexer.mll parser.mly main.ml
 	ocamllex lexer.mll
 	ocamlyacc parser.mly
-	ocamlopt range.mli range.ml types.ml parser.mli parser.ml lexer.ml -o polysr.exe
+	ocamlopt typevar.mli typevar.ml range.mli range.ml types.ml parser.mli parser.ml lexer.ml main.ml -o polysr.exe
 

@@ -6,44 +6,44 @@ type variable_name = string
 
 type mono_type = mono_type_main * Range.t
 and mono_type_main =
-  | TypeVariable of int
+  | TypeVariable of Typevar.t
   | IntType
   | BoolType
   | FuncType     of mono_type * mono_type * mono_type * mono_type
 
 type poly_type =
-  | Forall of int * poly_type
+  | Forall of Typevar.t * poly_type
   | Mono   of mono_type
 
-type source_tree = source_tree_main * Range.t
-and source_tree_main =
+type source_term = source_term_main * Range.t
+and source_term_main =
   | SrcVar        of variable_name
-  | SrcApply      of source_tree * source_tree
-  | SrcLambda     of (variable_name * Range.t) * source_tree
-  | SrcFixPoint   of (variable_name * Range.t) * source_tree
-  | SrcLetIn      of (variable_name * Range.t) * source_tree * source_tree
-  | SrcIfThenElse of source_tree * source_tree * source_tree
-  | SrcShift      of (variable_name * Range.t) * source_tree
-  | SrcReset      of source_tree
+  | SrcApply      of source_term * source_term
+  | SrcLambda     of (variable_name * Range.t) * source_term
+  | SrcFixPoint   of (variable_name * Range.t) * source_term
+  | SrcLetIn      of (variable_name * Range.t) * source_term * source_term
+  | SrcIfThenElse of source_term * source_term * source_term
+  | SrcShift      of (variable_name * Range.t) * source_term
+  | SrcReset      of source_term
   | SrcIntConst   of int
   | SrcBoolConst  of bool
 
-type abstract_tree = abstract_tree_main * int
-and abstract_tree_main =
+type abstract_term = abstract_term_main * int
+and abstract_term_main =
   | Var        of variable_name
-  | Apply      of abstract_tree * abstract_tree
-  | Lambda     of variable_name * abstract_tree
-  | FixPoint   of variable_name * abstract_tree
-  | LetIn      of variable_name * abstract_tree * abstract_tree
-  | IfThenElse of abstract_tree * abstract_tree * abstract_tree
-  | Shift      of variable_name * abstract_tree
-  | Reset      of abstract_tree
+  | Apply      of abstract_term * abstract_term
+  | Lambda     of variable_name * abstract_term
+  | FixPoint   of variable_name * abstract_term
+  | LetIn      of variable_name * abstract_term * abstract_term
+  | IfThenElse of abstract_term * abstract_term * abstract_term
+  | Shift      of variable_name * abstract_term
+  | Reset      of abstract_term
   | IntConst   of int
   | BoolConst  of bool
 
 
-let rec string_of_source_tree sast =
-  let iter = string_of_source_tree in
+let rec string_of_source_term sast =
+  let iter = string_of_source_term in
   let (sastmain, _) = sast in
     match sastmain with
     | SrcVar(varnm)                         -> varnm
@@ -67,15 +67,15 @@ let rec string_of_mono_type (srcty : mono_type) =
   in
   let (srctymain, _) = srcty in
     match srctymain with
-    | TypeVariable(i)                        -> "'" ^ (string_of_int i)
+    | TypeVariable(i)                        -> Typevar.to_string i
     | IntType                                -> "int"
     | BoolType                               -> "bool"
     | FuncType(tydom, tycod, tyans1, tyans2) -> (iter_enclose tydom) ^ " / " ^ (iter_enclose tyans1) ^
                                                   " -> " ^ (iter_enclose tycod) ^ " / " ^ (iter tyans2)
 
 (*
-let rec string_of_abstract_tree (ast : abstract_tree) =
-  let iter = string_of_abstract_tree in
+let rec string_of_abstract_term (ast : abstract_term) =
+  let iter = string_of_abstract_term in
   let (astmain, layer) = ast in
   let strlayer s = "(" ^ (string_of_int layer) ^ "| " ^ s ^ ")" in
     match astmain with
