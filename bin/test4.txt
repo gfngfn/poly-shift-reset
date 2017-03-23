@@ -1,1 +1,1 @@
-let x = 3 + 4 in x
+let n = 3 in let x = n + 4 in x

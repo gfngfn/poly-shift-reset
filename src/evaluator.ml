@@ -4,48 +4,79 @@ exception EmptyList
 exception DivisionByZero
 exception Bug of string
 
-type eval_term =
+
+type 'a _eval_term =
   | EvIntConst         of int
   | EvBoolConst        of bool
   | EvVar              of Rename.id
-  | EvApply            of eval_term * eval_term
-  | EvLambda           of Rename.id * eval_term
-  | EvFixPointOfLambda of Rename.id * Rename.id * eval_term
-  | EvIfThenElse       of eval_term * eval_term * eval_term
-  | EvPrimPlus         of eval_term * eval_term
-  | EvPrimMinus        of eval_term * eval_term
-  | EvPrimTimes        of eval_term * eval_term
-  | EvPrimDivides      of eval_term * eval_term
-  | EvPrimEqual        of eval_term * eval_term
-  | EvPrimLeq          of eval_term * eval_term
-  | EvPrimGeq          of eval_term * eval_term
-  | EvPrimLessThan     of eval_term * eval_term
-  | EvPrimGreaterThan  of eval_term * eval_term
-  | EvPrimAnd          of eval_term * eval_term
-  | EvPrimOr           of eval_term * eval_term
-  | EvPrimNot          of eval_term
+  | EvApply            of 'a _eval_term * 'a _eval_term
+  | EvLambda           of Rename.id * 'a _eval_term
+  | EvFixPointOfLambda of Rename.id * Rename.id * 'a _eval_term
+  | EvEvaluatedAbs     of 'a * Rename.id option * Rename.id * 'a _eval_term
+  | EvIfThenElse       of 'a _eval_term * 'a _eval_term * 'a _eval_term
+  | EvPrimPlus         of 'a _eval_term * 'a _eval_term
+  | EvPrimMinus        of 'a _eval_term * 'a _eval_term
+  | EvPrimTimes        of 'a _eval_term * 'a _eval_term
+  | EvPrimDivides      of 'a _eval_term * 'a _eval_term
+  | EvPrimEqual        of 'a _eval_term * 'a _eval_term
+  | EvPrimLeq          of 'a _eval_term * 'a _eval_term
+  | EvPrimGeq          of 'a _eval_term * 'a _eval_term
+  | EvPrimLessThan     of 'a _eval_term * 'a _eval_term
+  | EvPrimGreaterThan  of 'a _eval_term * 'a _eval_term
+  | EvPrimAnd          of 'a _eval_term * 'a _eval_term
+  | EvPrimOr           of 'a _eval_term * 'a _eval_term
+  | EvPrimNot          of 'a _eval_term
   | EvNil
-  | EvCons             of eval_term * eval_term
-  | EvPrimIsEmpty      of eval_term
-  | EvPrimListHead     of eval_term
-  | EvPrimListTail     of eval_term
+  | EvCons             of 'a _eval_term * 'a _eval_term
+  | EvPrimIsEmpty      of 'a _eval_term
+  | EvPrimListHead     of 'a _eval_term
+  | EvPrimListTail     of 'a _eval_term
+
+
+module Evalenv : sig
+  type t
+
+  val create : unit -> t
+  val add : t -> Rename.id -> t _eval_term -> unit
+  val find : t -> Rename.id -> t _eval_term
+  val copy : t -> t
+
+end = struct
+  type t = Tag of (Rename.id, t _eval_term) Hashtbl.t
+
+  let create () =
+    let env = Hashtbl.create 1024 in Tag(env)
+
+  let add ((Tag(env)) : t) (evid : Rename.id) (evtm : t _eval_term) = Hashtbl.add env evid evtm
+
+  let find ((Tag(env)) : t) (evid : Rename.id) = Hashtbl.find env evid
+
+  let copy ((Tag(env)) : t) =
+    let envnew = Hashtbl.copy env in Tag(envnew)
+end
+
+
+type eval_term = Evalenv.t _eval_term
 
 
 let rec string_of_eval_term evtm =
   let iter = string_of_eval_term in
   let rs = Rename.string_of_id in
     match evtm with
-    | EvIntConst(ic)                  -> string_of_int ic
-    | EvBoolConst(bc)                 -> string_of_bool bc
-    | EvVar(id)                       -> rs id
-    | EvApply(t1, t2)                 -> "(" ^ (iter t1) ^ " " ^ (iter t2) ^ ")"
-    | EvLambda(id, t)                 -> "(\\" ^ (rs id) ^ ". " ^ (iter t) ^ ")"
-    | EvFixPointOfLambda(idf, idx, t) -> "(fix " ^ (rs idf) ^ ". \\" ^ (rs idx) ^ ". " ^ (iter t) ^ ")"
-    | EvIfThenElse(t0, t1, t2)        -> "(if " ^ (iter t0) ^ " then " ^ (iter t1) ^ " else " ^ (iter t2) ^ ")"
-    | EvNil                           -> "[]"
-    | EvCons(t1, t2)                  -> "(" ^ (iter t1) ^ " :: " ^ (iter t2) ^ ")"
-    | EvPrimPlus(t1, t2)              -> "(" ^ (iter t1) ^ " + " ^ (iter t2) ^ ")"
-    | _                               -> "(primitive-with-args)"
+    | EvIntConst(ic)                       -> string_of_int ic
+    | EvBoolConst(bc)                      -> string_of_bool bc
+    | EvVar(id)                            -> rs id
+    | EvApply(t1, t2)                      -> "(" ^ (iter t1) ^ " " ^ (iter t2) ^ ")"
+    | EvLambda(id, t)                      -> "(\\" ^ (rs id) ^ ". " ^ (iter t) ^ ")"
+    | EvFixPointOfLambda(idf, idx, t)      -> "(fix " ^ (rs idf) ^ ". \\" ^ (rs idx) ^ ". " ^ (iter t) ^ ")"
+    | EvEvaluatedAbs(_, Some(idf), idx, t) -> "(abs! " ^ (rs idf) ^ ". " ^ (rs idx) ^ ". " ^ (iter t) ^ ")"
+    | EvEvaluatedAbs(_, None, idx, t)      -> "(abs! _. " ^ (rs idx) ^ ". " ^ (iter t) ^ ")"
+    | EvIfThenElse(t0, t1, t2)             -> "(if " ^ (iter t0) ^ " then " ^ (iter t1) ^ " else " ^ (iter t2) ^ ")"
+    | EvNil                                -> "[]"
+    | EvCons(t1, t2)                       -> "(" ^ (iter t1) ^ " :: " ^ (iter t2) ^ ")"
+(*    | EvPrimPlus(t1, t2)                   -> "(" ^ (iter t1) ^ " + " ^ (iter t2) ^ ")" *)
+    | _                                    -> "(primitive-with-args)"
+
 
 let ( @--> ) evid evtm = EvLambda(evid, evtm)
 let ( ~@ ) evid = EvVar(evid)
@@ -113,31 +144,15 @@ let rec transform_into_eval_style (rnenv : Rename.env) ((astmain, _) : abstract_
             ((~@ evidK) *@ ((iter rnenv ast1) *@ (evidM @--> (~@ evidM)))))
 
 
-module Evalenv : sig
-  type t
-
-  val create : unit -> t
-  val add : t -> Rename.id -> eval_term -> unit
-  val find : t -> Rename.id -> eval_term
-end = struct
-  type t = (Rename.id, eval_term) Hashtbl.t
-
-  let create : unit -> t = (fun () -> Hashtbl.create 1024)
-
-  let add (env : t) (evid : Rename.id) (evtm : eval_term) = Hashtbl.add env evid evtm
-
-  let find (env : t) (evid : Rename.id) = Hashtbl.find env evid
-end
-
-
 let rec eval (env : Evalenv.t) (evtm : eval_term) =
   match evtm with
   | ( EvIntConst(_)
     | EvBoolConst(_)
-    | EvLambda(_, _)
-    | EvFixPointOfLambda(_, _, _) )   -> evtm
+    | EvEvaluatedAbs(_, _, _, _) ) -> evtm
+  | EvLambda(evidx, evtm1)                  -> let envabs = Evalenv.copy env in EvEvaluatedAbs(envabs, None, evidx, evtm1)
+  | EvFixPointOfLambda(evidf, evidx, evtm1) -> let envabs = Evalenv.copy env in EvEvaluatedAbs(envabs, Some(evidf), evidx, evtm1)
 
-  | EvVar(evid)                       -> Evalenv.find env evid
+  | EvVar(evid)                       -> eval env (Evalenv.find env evid)
 
   | EvNil                -> EvNil
 
@@ -153,13 +168,16 @@ let rec eval (env : Evalenv.t) (evtm : eval_term) =
      let value1 = eval env evtm1 in
       begin
         match value1 with
-        | EvLambda(evid, evtm1sub) ->
+        | EvEvaluatedAbs(envabs, evidfopt, evidx, evtm1sub) ->
             let value2 = eval env evtm2 in
-            begin Evalenv.add env evid value2 ; eval env evtm1sub end
-
-        | EvFixPointOfLambda(evidf, evidx, evtm1sub) ->
-            let value2 = eval env evtm2 in
-            begin Evalenv.add env evidf value1 ; Evalenv.add env evidx value2 ; eval env evtm1sub end
+            begin
+              begin
+                match evidfopt with
+                | None        -> ()
+                | Some(evidf) -> Evalenv.add envabs evidf value1
+              end ;
+              Evalenv.add envabs evidx value2 ; eval envabs evtm1sub
+            end
 
         | _ -> raise (Bug((string_of_eval_term evtm) ^ " ->* " ^ (string_of_eval_term (EvApply(value1, evtm2)))))
       end
@@ -181,7 +199,11 @@ let rec eval (env : Evalenv.t) (evtm : eval_term) =
   | EvPrimNot(evtm)                 -> let bc = eval_bool env evtm in EvBoolConst(not bc)
 
   | EvPrimIsEmpty(evtm)             -> eval_list env evtm (fun () -> EvBoolConst(true)) (fun _ _ -> EvBoolConst(false))
-  | EvPrimListHead(evtm)            -> eval_list env evtm (fun () -> raise EmptyList) (fun vH vT -> vH)
+  | EvPrimListHead(evtm)            ->
+      let _ = print_string ((string_of_eval_term evtm) ^ " ---> ") in (* for debug *)
+        eval_list env evtm (fun () -> raise EmptyList) (fun vH vT ->
+          let _ = print_endline (string_of_eval_term (EvCons(vH, vT))) in (* for debug *)
+            vH)
   | EvPrimListTail(evtm)            -> eval_list env evtm (fun () -> raise EmptyList) (fun vH vT -> vT)
 
 

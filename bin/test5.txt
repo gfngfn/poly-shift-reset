@@ -1,0 +1,1 @@
+let h = head (1 :: 2 :: []) in h
