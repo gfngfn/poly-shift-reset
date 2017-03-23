@@ -1,0 +1,11 @@
+letrec visit lst =
+  if is_empty lst then
+    (shift k. [])
+  else
+    let hd = head lst in
+    let tl = tail lst in
+      hd :: (shift k. (k []) :: reset (k (visit tl)))
+in
+let prefix lst = reset (visit lst)
+in
+  prefix

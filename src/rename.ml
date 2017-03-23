@@ -33,6 +33,6 @@ let add (rnenv : env) (varnm : variable_name) =
 
 let rec find (rnenv : env) (varnm : variable_name) =
   match rnenv with
-  | []                             -> assert false
+  | []                             -> raise (Bug("Rename.find: cannot find '" ^ varnm ^ "'"))
   | (v, e) :: tail  when v = varnm -> e
   | _ :: tail                      -> find tail varnm

@@ -83,5 +83,5 @@ let _ =
 
       | Evaluator.DivisionByZero -> report_error "Runtime" [ NormalLine("division by zero."); ]
       | Evaluator.EmptyList      -> report_error "Runtime" [ NormalLine("empty list."); ]
-      | Evaluator.Bug(s)         -> report_error "*Bug*" [ NormalLine(s); ]
+      | Bug(s)                   -> report_error "*Bug*" [ NormalLine(s); ]
     end

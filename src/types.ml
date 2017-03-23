@@ -1,4 +1,6 @@
 
+exception Bug of string
+
 type variable_name = string
 
 type mono_type = mono_type_main * Range.t

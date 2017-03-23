@@ -69,7 +69,7 @@ let rec typecheck_pure (thetapre : Subst.t) (tyenv : Typeenv.t) (sast : source_t
     | SrcBoolConst(bc) -> let tyres = (BoolType, rng) in ((BoolConst(bc), tyres), tyres, thetapre)
     | SrcNil           -> let (vA, _) = fresh () in let tyres = (ListType(vA), rng) in ((Nil, tyres), tyres, thetapre)
 
-    | _ -> assert false
+    | _ -> raise (Bug("impure expression in typecheck_pure"))
 
 
 and typecheck_abstraction (thetapre : Subst.t) (tyenv : Typeenv.t) (varnm : variable_name) (sast1 : source_term) =

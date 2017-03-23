@@ -138,7 +138,7 @@ let rec transform_into_eval_style (rnenv : Rename.env) ((astmain, _) : abstract_
         let (rnenvnew, evid) = Rename.add rnenv varnm in
           (evidK @-->
              (letin evid (evidN @--> evidL @--> ((~@ evidL) *@ ((~@ evidK) *@ (~@ evidN))))
-                ((iter rnenv ast1) *@ (evidM @--> (~@ evidM)))))
+                ((iter rnenvnew ast1) *@ (evidM @--> (~@ evidM)))))
 
     | Reset(ast1) ->
         let evidK = Rename.fresh () in
@@ -207,10 +207,11 @@ let rec eval (env : Evalenv.t) (evtm : eval_term) =
 
 
 and eval_list env evtm fnil fcons =
-  match eval env evtm with
-  | EvNil          -> fnil ()
-  | EvCons(vH, vT) -> fcons vH vT
-  | _              -> assert false
+  let vl = eval env evtm in
+    match vl with
+    | EvNil          -> fnil ()
+    | EvCons(vH, vT) -> fcons vH vT
+    | _              -> raise (Bug("eval_list: " ^ (string_of_eval_term vl) ^ " is not a list"))
 
 
 and eval_int_pair env (evtm1, evtm2) =
@@ -226,15 +227,17 @@ and eval_bool_pair env (evtm1, evtm2) =
 
 
 and eval_bool env evtm =
-  match eval env evtm with
-  | EvBoolConst(bc) -> bc
-  | _               -> assert false
+  let vl = eval env evtm in
+    match vl with
+    | EvBoolConst(bc) -> bc
+    | _               -> raise (Bug("eval_bool: " ^ (string_of_eval_term vl) ^ " is not a boolean"))
 
 
 and eval_int env evtm =
-  match eval env evtm with
-  | EvIntConst(ic) -> ic
-  | _              -> assert false
+  let vl = eval env evtm in
+    match vl with
+    | EvIntConst(ic) -> ic
+    | _              -> raise (Bug("eval_int: " ^ (string_of_eval_term vl) ^ " is not an integer"))
 
 
 let main (env : Evalenv.t) (rnenv : Rename.env) (ast : abstract_term) =
