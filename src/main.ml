@@ -78,6 +78,7 @@ let _ =
               DisplayLine(string_of_mono_type tyreq);
             ] additional)
 
-      | Evaluator.DivisionByZero -> report_error "Runtime "[ NormalLine("division by zero."); ]
-      | Evaluator.EmptyList      -> report_error "Runtime "[ NormalLine("empty list."); ]
+      | Evaluator.DivisionByZero -> report_error "Runtime" [ NormalLine("division by zero."); ]
+      | Evaluator.EmptyList      -> report_error "Runtime" [ NormalLine("empty list."); ]
+      | Evaluator.Bug(s)         -> report_error "*Bug*" [ NormalLine(s); ]
     end

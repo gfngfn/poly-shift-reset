@@ -2,6 +2,7 @@ open Types
 
 exception EmptyList
 exception DivisionByZero
+exception Bug of string
 
 type eval_term =
   | EvIntConst         of int
@@ -43,7 +44,8 @@ let rec string_of_eval_term evtm =
     | EvIfThenElse(t0, t1, t2)        -> "(if " ^ (iter t0) ^ " then " ^ (iter t1) ^ " else " ^ (iter t2) ^ ")"
     | EvNil                           -> "[]"
     | EvCons(t1, t2)                  -> "(" ^ (iter t1) ^ " :: " ^ (iter t2) ^ ")"
-    | _                               -> "(primitive)"
+    | EvPrimPlus(t1, t2)              -> "(" ^ (iter t1) ^ " + " ^ (iter t2) ^ ")"
+    | _                               -> "(primitive-with-args)"
 
 let ( @--> ) evid evtm = EvLambda(evid, evtm)
 let ( ~@ ) evid = EvVar(evid)
@@ -159,7 +161,7 @@ let rec eval (env : Evalenv.t) (evtm : eval_term) =
             let value2 = eval env evtm2 in
             begin Evalenv.add env evidf value1 ; Evalenv.add env evidx value2 ; eval env evtm1sub end
 
-        | _ -> assert false
+        | _ -> raise (Bug((string_of_eval_term evtm) ^ " ->* " ^ (string_of_eval_term (EvApply(value1, evtm2)))))
       end
 
   | EvPrimPlus(evtm1, evtm2)        -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvIntConst(ic1 + ic2)
@@ -221,23 +223,35 @@ let main (env : Evalenv.t) (rnenv : Rename.env) (ast : abstract_term) =
 
 
 let primitives =
-  let evid1 = Rename.fresh () in
-  let evid2 = Rename.fresh () in
+  let binary op =
+    let evidP = Rename.fresh () in
+    let evidQ = Rename.fresh () in
+    let evidA = Rename.fresh () in
+    let evidB = Rename.fresh () in
+    let evidK = Rename.fresh () in
+      (evidP @--> ((~@ evidP) *@ (evidA @--> evidQ @--> ((~@ evidQ) *@ (evidB @--> evidK @--> ((~@ evidK) *@ (op (~@ evidA) (~@ evidB))))))))
+  in
+  let unary op =
+    let evidP = Rename.fresh () in
+    let evidA = Rename.fresh () in
+    let evidK = Rename.fresh () in
+      (evidP @--> ((~@ evidP) *@ (evidA @--> evidK @--> ((~@ evidK) *@ (op (~@ evidA))))))
+  in
     [
-      ("+",   (evid1 @--> evid2 @--> (EvPrimPlus(~@ evid1, ~@ evid2))));
-      ("-",   (evid1 @--> evid2 @--> (EvPrimMinus(~@ evid1, ~@ evid2))));
-      ("*",   (evid1 @--> evid2 @--> (EvPrimTimes(~@ evid1, ~@ evid2))));
-      ("/",   (evid1 @--> evid2 @--> (EvPrimDivides(~@ evid1, ~@ evid2))));
-      ("==",  (evid1 @--> evid2 @--> (EvPrimEqual(~@ evid1, ~@ evid2))));
-      ("<=",  (evid1 @--> evid2 @--> (EvPrimLeq(~@ evid1, ~@ evid2))));
-      (">=",  (evid1 @--> evid2 @--> (EvPrimGeq(~@ evid1, ~@ evid2))));
-      ("<",   (evid1 @--> evid2 @--> (EvPrimLessThan(~@ evid1, ~@ evid2))));
-      (">",   (evid1 @--> evid2 @--> (EvPrimGreaterThan(~@ evid1, ~@ evid2))));
-      ("&&",  (evid1 @--> evid2 @--> (EvPrimAnd(~@ evid1, ~@ evid2))));
-      ("||",  (evid1 @--> evid2 @--> (EvPrimOr(~@ evid1, ~@ evid2))));
-      ("not", (evid1 @--> (EvPrimNot(~@ evid1))));
-      ("is_empty", (evid1 @--> (EvPrimIsEmpty(~@ evid1))));
-      ("head",     (evid1 @--> (EvPrimListHead(~@ evid1))));
-      ("tail",     (evid1 @--> (EvPrimListTail(~@ evid1))));
-      ("::",       (evid1 @--> evid2 @--> (EvCons(~@ evid1, ~@ evid2))));
+      ("+",   binary (fun x y -> EvPrimPlus(x, y)));
+      ("-",   binary (fun x y -> EvPrimMinus(x, y)));
+      ("*",   binary (fun x y -> EvPrimTimes(x, y)));
+      ("/",   binary (fun x y -> EvPrimDivides(x, y)));
+      ("==",  binary (fun x y -> EvPrimEqual(x, y)));
+      ("<=",  binary (fun x y -> EvPrimLeq(x, y)));
+      (">=",  binary (fun x y -> EvPrimGeq(x, y)));
+      ("<",   binary (fun x y -> EvPrimLessThan(x, y)));
+      (">",   binary (fun x y -> EvPrimGreaterThan(x, y)));
+      ("&&",  binary (fun x y -> EvPrimAnd(x, y)));
+      ("||",  binary (fun x y -> EvPrimOr(x, y)));
+      ("not",      unary (fun x -> EvPrimNot(x)));
+      ("is_empty", unary (fun x -> EvPrimIsEmpty(x)));
+      ("head",     unary (fun x -> EvPrimListHead(x)));
+      ("tail",     unary (fun x -> EvPrimListTail(x)));
+      ("::",  binary (fun x y -> EvCons(x, y)));
     ]
