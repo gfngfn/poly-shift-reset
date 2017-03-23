@@ -24,7 +24,7 @@ let type_environment =
       ("is_empty", Forall(v (-1), Forall(v (-2), Mono(ft (lt (tv (-2))) bt (tv (-1))))));
       ("head",     Forall(v (-1), Forall(v (-2), Mono(ft (lt (tv (-2))) (tv (-2)) (tv (-1))))));
       ("tail",     Forall(v (-1), Forall(v (-2), Mono(ft (lt (tv (-2))) (lt (tv (-2))) (tv (-1))))));
-      ("::",       Forall(v (-1), Forall(v (-3), Forall(v (-3), Mono(ft (tv (-3)) (ft (lt (tv (-3))) (lt (tv (-3))) (tv (-2))) (tv (-1)))))));
+      ("::",       Forall(v (-1), Forall(v (-2), Forall(v (-3), Mono(ft (tv (-3)) (ft (lt (tv (-3))) (lt (tv (-3))) (tv (-2))) (tv (-1)))))));
     ] Typeenv.empty
 
 

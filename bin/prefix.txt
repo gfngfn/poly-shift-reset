@@ -8,4 +8,4 @@ letrec visit lst =
 in
 let prefix lst = reset (visit lst)
 in
-  prefix
+  prefix (1 :: 2 :: [])
