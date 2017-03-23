@@ -1,5 +1,7 @@
 open Types
 
+exception EmptyList
+exception DivisionByZero
 
 type eval_term =
   | EvIntConst         of int
@@ -21,6 +23,11 @@ type eval_term =
   | EvPrimAnd          of eval_term * eval_term
   | EvPrimOr           of eval_term * eval_term
   | EvPrimNot          of eval_term
+  | EvNil
+  | EvCons             of eval_term * eval_term
+  | EvPrimIsEmpty      of eval_term
+  | EvPrimListHead     of eval_term
+  | EvPrimListTail     of eval_term
 
 
 let rec string_of_eval_term evtm =
@@ -34,6 +41,8 @@ let rec string_of_eval_term evtm =
     | EvLambda(id, t)                 -> "(\\" ^ (rs id) ^ ". " ^ (iter t) ^ ")"
     | EvFixPointOfLambda(idf, idx, t) -> "(fix " ^ (rs idf) ^ ". \\" ^ (rs idx) ^ ". " ^ (iter t) ^ ")"
     | EvIfThenElse(t0, t1, t2)        -> "(if " ^ (iter t0) ^ " then " ^ (iter t1) ^ " else " ^ (iter t2) ^ ")"
+    | EvNil                           -> "[]"
+    | EvCons(t1, t2)                  -> "(" ^ (iter t1) ^ " :: " ^ (iter t2) ^ ")"
     | _                               -> "(primitive)"
 
 let ( @--> ) evid evtm = EvLambda(evid, evtm)
@@ -45,9 +54,10 @@ let letin evid evtm1 evtm2 = ((evid @--> evtm2) *@ evtm1)
 let rec transform_into_eval_style (rnenv : Rename.env) ((astmain, _) : abstract_term) =
   let iter = transform_into_eval_style in
     match astmain with
-    | IntConst(ic)  -> let evidK = Rename.fresh () in (evidK @--> (EvVar(evidK) *@ EvIntConst(ic)))
-    | BoolConst(bc) -> let evidK = Rename.fresh () in (evidK @--> (EvVar(evidK) *@ EvBoolConst(bc)))
-    | Var(varnm)    -> let evidK = Rename.fresh () in (evidK @--> (EvVar(evidK) *@ EvVar(Rename.find rnenv varnm)))
+    | IntConst(ic)  -> let evidK = Rename.fresh () in (evidK @--> ((~@ evidK) *@ EvIntConst(ic)))
+    | BoolConst(bc) -> let evidK = Rename.fresh () in (evidK @--> ((~@ evidK) *@ EvBoolConst(bc)))
+    | Var(varnm)    -> let evidK = Rename.fresh () in (evidK @--> ((~@ evidK) *@ EvVar(Rename.find rnenv varnm)))
+    | Nil           -> let evidK = Rename.fresh () in (evidK @--> ((~@ evidK) *@ EvNil))
 
     | Apply(ast1, ast2) ->
         let evidK = Rename.fresh () in
@@ -127,6 +137,13 @@ let rec eval (env : Evalenv.t) (evtm : eval_term) =
 
   | EvVar(evid)                       -> Evalenv.find env evid
 
+  | EvNil                -> EvNil
+
+  | EvCons(evtm1, evtm2) ->
+      let value1 = eval env evtm1 in
+      let value2 = eval env evtm2 in
+        EvCons(value1, value2)
+
   | EvIfThenElse(evtm0, evtm1, evtm2) ->
       if eval_bool env evtm0 then eval env evtm1 else eval env evtm2
 
@@ -148,7 +165,8 @@ let rec eval (env : Evalenv.t) (evtm : eval_term) =
   | EvPrimPlus(evtm1, evtm2)        -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvIntConst(ic1 + ic2)
   | EvPrimMinus(evtm1, evtm2)       -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvIntConst(ic1 - ic2)
   | EvPrimTimes(evtm1, evtm2)       -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvIntConst(ic1 * ic2)
-  | EvPrimDivides(evtm1, evtm2)     -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvIntConst(ic1 / ic2)
+  | EvPrimDivides(evtm1, evtm2)     -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in
+                                         if ic2 = 0 then raise DivisionByZero else EvIntConst(ic1 / ic2)
 
   | EvPrimEqual(evtm1, evtm2)       -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvBoolConst(ic1 = ic2)
   | EvPrimLeq(evtm1, evtm2)         -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvBoolConst(ic1 <= ic2)
@@ -159,6 +177,17 @@ let rec eval (env : Evalenv.t) (evtm : eval_term) =
   | EvPrimAnd(evtm1, evtm2)         -> let (bc1, bc2) = eval_bool_pair env (evtm1, evtm2) in EvBoolConst(bc1 && bc2)
   | EvPrimOr(evtm1, evtm2)          -> let (bc1, bc2) = eval_bool_pair env (evtm1, evtm2) in EvBoolConst(bc1 || bc2)
   | EvPrimNot(evtm)                 -> let bc = eval_bool env evtm in EvBoolConst(not bc)
+
+  | EvPrimIsEmpty(evtm)             -> eval_list env evtm (fun () -> EvBoolConst(true)) (fun _ _ -> EvBoolConst(false))
+  | EvPrimListHead(evtm)            -> eval_list env evtm (fun () -> raise EmptyList) (fun vH vT -> vH)
+  | EvPrimListTail(evtm)            -> eval_list env evtm (fun () -> raise EmptyList) (fun vH vT -> vT)
+
+
+and eval_list env evtm fnil fcons =
+  match eval env evtm with
+  | EvNil          -> fnil ()
+  | EvCons(vH, vT) -> fcons vH vT
+  | _              -> assert false
 
 
 and eval_int_pair env (evtm1, evtm2) =
@@ -207,4 +236,8 @@ let primitives =
       ("&&",  (evid1 @--> evid2 @--> (EvPrimAnd(~@ evid1, ~@ evid2))));
       ("||",  (evid1 @--> evid2 @--> (EvPrimOr(~@ evid1, ~@ evid2))));
       ("not", (evid1 @--> (EvPrimNot(~@ evid1))));
+      ("is_empty", (evid1 @--> (EvPrimIsEmpty(~@ evid1))));
+      ("head",     (evid1 @--> (EvPrimListHead(~@ evid1))));
+      ("tail",     (evid1 @--> (EvPrimListTail(~@ evid1))));
+      ("::",       (evid1 @--> evid2 @--> (EvCons(~@ evid1, ~@ evid2))));
     ]

@@ -28,6 +28,7 @@
 %token<Range.t> LET LETREC IN IF THEN ELSE
 %token<Range.t> LPAREN RPAREN DEFEQ LAMBDA FIX DOT
 %token<Range.t> SHIFT RESET
+%token<Range.t> BLIST ELIST CONS
 %token<Range.t> PLUS MINUS TIMES DIVIDES EQUAL GT LT GEQ LEQ LAND LOR TRUE FALSE
 
 %start main
@@ -81,7 +82,11 @@ relop:
   | EQUAL { ("==", $1) }  | GT { (">", $1) }  | LT { ("<", $1) }  | GEQ { (">=", $1) }  | LEQ { ("<=", $1) }
 ;
 xprel:
-  | xptimes relop xprel { binary_operator $1 $2 $3 }
+  | xpcons relop xprel { binary_operator $1 $2 $3 }
+  | xpcons             { $1 }
+;
+xpcons:
+  | xptimes CONS xpcons { binary_operator $1 ("::", $2) $3 }
   | xptimes             { $1 }
 ;
 timesop:
@@ -99,6 +104,7 @@ xpplus:
 ;
 xpapp:
   | xpapp xpbot { (SrcApply($1, $2), make_range (Source $1) (Source $2)) }
+  | RESET xpbot { (SrcReset($2), make_range (Token $1) (Source $2)) }
   | xpbot       { $1 }
 ;
 binop:
@@ -107,6 +113,7 @@ binop:
   | relop   { $1 }
   | timesop { $1 }
   | plusop  { $1 }
+  | CONS    { ("::", $1) }
 ;
 xpbot:
   | INTCONST              { let (num, rng) = $1 in (SrcIntConst(num), rng) }
@@ -115,4 +122,5 @@ xpbot:
   | VAR                   { let (varnm, rng) = $1 in (SrcVar(varnm), rng) }
   | LPAREN binop RPAREN   { let (opnm, _) = $2 in (SrcVar(opnm), make_range (Token $1) (Token $3)) }
   | LPAREN xplet RPAREN   { let (utastmain, _) = $2 in (utastmain, make_range (Token $1) (Token $3)) }
+  | BLIST ELIST           { (SrcNil, make_range (Token $1) (Token $2)) }
 ;

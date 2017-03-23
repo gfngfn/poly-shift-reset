@@ -23,8 +23,8 @@ let report_error (category : string) (lines : console_line list) =
 let generate_description ((_, rng1) as ty1) ((_, rng2) as ty2) =
   match (Range.is_dummy rng1, Range.is_dummy rng2) with
   | (true, true)   -> ("somewhere is wrong", ty1, ty2, [])
-  | (true, false)  -> ("at " ^ (Range.to_string rng2), ty2, ty1, [])
-  | (false, true)  -> ("at " ^ (Range.to_string rng1), ty1, ty2, [])
+  | (true, false)  -> ("at " ^ (Range.to_string rng2), ty2, ty1, [NormalLine("(" ^ Range.to_string rng1 ^ ")");]) (*for debug*)
+  | (false, true)  -> ("at " ^ (Range.to_string rng1), ty1, ty2, [NormalLine("(" ^ Range.to_string rng2 ^ ")");])
   | (false, false) -> ("at " ^ (Range.to_string rng1), ty1, ty2,
                         [NormalLine("This constraint is required by the expression at " ^ (Range.to_string rng2))])
 
@@ -62,9 +62,9 @@ let _ =
           let (range_desc, tyindeed, tyreq, additional) = generate_description ty1 ty2 in
             report_error "Typechecker" (List.append [
               NormalLine(range_desc ^ ":");
-              NormalLine("the expression has type");
+              NormalLine("the type of this expression");
               DisplayLine(string_of_mono_type tyindeed);
-              NormalLine("but is expected of type");
+              NormalLine("is incompatible with");
               DisplayLine(string_of_mono_type tyreq);
             ] additional)
 
@@ -72,9 +72,12 @@ let _ =
           let (range_desc, tyindeed, tyreq, additional) = generate_description ty1 ty2 in
             report_error "Typechecker" (List.append [
               NormalLine(range_desc ^ ":");
-              NormalLine("the type of this expression");
+              NormalLine("the expression has type");
               DisplayLine(string_of_mono_type tyindeed);
-              NormalLine("is incompatible with");
+              NormalLine("but is expected of type");
               DisplayLine(string_of_mono_type tyreq);
             ] additional)
+
+      | Evaluator.DivisionByZero -> report_error "Runtime "[ NormalLine("division by zero."); ]
+      | Evaluator.EmptyList      -> report_error "Runtime "[ NormalLine("empty list."); ]
     end

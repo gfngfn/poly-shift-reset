@@ -1,0 +1,7 @@
+letrec mult lst =
+  if is_empty lst then 1 else
+    let hd = head lst in
+    let tl = tail lst in
+      if hd == 0 then (shift k. 0) else hd * (mult tl)
+in
+  reset (mult (3 :: 1 :: 4 :: []))

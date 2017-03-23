@@ -1,0 +1,5 @@
+letrec last lst =
+  let tl = tail lst in
+    if is_empty tl then head lst else last tl
+in
+  last (3 :: 1 :: 4 :: 1 :: 5 :: 9 :: 2 :: [])

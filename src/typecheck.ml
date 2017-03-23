@@ -23,8 +23,8 @@ let rec instantiate (pty : poly_type) =
 
 let is_pure ((sastmain, _) : source_term) =
   match sastmain with
-  | ( SrcVar(_) | SrcLambda(_, _) | SrcFixPoint(_, _) | SrcReset(_, _) | SrcIntConst(_) | SrcBoolConst(_) ) -> true
-  | _                                                                                                       -> false
+  | ( SrcVar(_) | SrcLambda(_, _) | SrcFixPoint(_, _) | SrcReset(_, _) | SrcIntConst(_) | SrcBoolConst(_) | SrcNil ) -> true
+  | _                                                                                                                -> false
 
 
 let rec typecheck_pure (thetapre : Subst.t) (tyenv : Typeenv.t) (sast : source_term) =
@@ -67,6 +67,7 @@ let rec typecheck_pure (thetapre : Subst.t) (tyenv : Typeenv.t) (sast : source_t
 
     | SrcIntConst(ic)  -> let tyres = (IntType, rng) in ((IntConst(ic), tyres), tyres, thetapre)
     | SrcBoolConst(bc) -> let tyres = (BoolType, rng) in ((BoolConst(bc), tyres), tyres, thetapre)
+    | SrcNil           -> let (vA, _) = fresh () in let tyres = (ListType(vA), rng) in ((Nil, tyres), tyres, thetapre)
 
     | _ -> assert false
 
@@ -83,7 +84,7 @@ and typecheck_abstraction (thetapre : Subst.t) (tyenv : Typeenv.t) (varnm : vari
 and typecheck (thetapre : Subst.t) (tyenv : Typeenv.t) (tyans : mono_type) (sast : source_term) =
   let (sastmain, rng) = sast in
     match sastmain with
-    | _  when is_pure sast ->
+    | ( SrcVar(_) | SrcLambda(_, _) | SrcFixPoint(_, _) | SrcReset(_, _) | SrcIntConst(_) | SrcBoolConst(_) | SrcNil ) ->
         let (e, ty, theta) = typecheck_pure thetapre tyenv sast in
           (e, ty, tyans, theta)
 
@@ -115,7 +116,7 @@ and typecheck (thetapre : Subst.t) (tyenv : Typeenv.t) (tyans : mono_type) (sast
         let thetaV = Subst.unify (theta2 @> tyans1) tyans2 in
         let thetaVU2 = thetaV @@ thetaU @@ theta2 in
         let (e0, ty0, tyans0, theta0) = typecheck thetaVU2 tyenv (thetaVU2 @> tyans2) sast0 in
-        let thetaW = Subst.unify tyans0 (BoolType, Range.dummy "tc-if") in
+        let thetaW = Subst.unify ty0 (BoolType, Range.dummy "tc-if") in
         let thetaWVU2 = thetaW @@ thetaVU2 in
         let tyres = thetaWVU2 @> ty2 in
           ((IfThenElse(e0, e1, e2), tyres), tyres, thetaW @> tyans0, thetaWVU2)
@@ -130,4 +131,4 @@ and typecheck (thetapre : Subst.t) (tyenv : Typeenv.t) (tyans : mono_type) (sast
         let tyres = thetaU @> vT in
           ((Shift(varnm, e1), tyres), tyres, thetaU @> tyB, thetaU @@ theta1)
 
-    | _ -> assert false
+            

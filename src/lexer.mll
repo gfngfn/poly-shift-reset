@@ -34,6 +34,9 @@ rule expr = parse
   | "<=" { LEQ(get_range lexbuf) }
   | "&&" { LAND(get_range lexbuf) }
   | "||" { LOR(get_range lexbuf) }
+  | "["  { BLIST(get_range lexbuf) }
+  | "]"  { ELIST(get_range lexbuf) }
+  | "::" { CONS(get_range lexbuf) }
   | (digit +) { INTCONST(int_of_string (Lexing.lexeme lexbuf), get_range lexbuf) }
   | identifier {
         let rng = get_range lexbuf in

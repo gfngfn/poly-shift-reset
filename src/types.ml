@@ -7,6 +7,7 @@ and mono_type_main =
   | BoolType
   | TypeVariable of Typevar.t
   | FuncType     of mono_type * mono_type * mono_type * mono_type
+  | ListType     of mono_type
 
 
 type poly_type =
@@ -23,21 +24,23 @@ and source_term_main =
   | SrcFixPoint   of (variable_name * Range.t) * source_term
   | SrcLetIn      of (variable_name * Range.t) * source_term * source_term
   | SrcIfThenElse of source_term * source_term * source_term
+  | SrcNil
   | SrcShift      of (variable_name * Range.t) * source_term
   | SrcReset      of source_term
 
 type abstract_term = abstract_term_main * mono_type
 and abstract_term_main =
+  | IntConst         of int
+  | BoolConst        of bool
   | Var              of variable_name
   | Apply            of abstract_term * abstract_term
   | Lambda           of variable_name * abstract_term
   | FixPointOfLambda of variable_name * variable_name * abstract_term
   | LetIn            of variable_name * abstract_term * abstract_term
   | IfThenElse       of abstract_term * abstract_term * abstract_term
+  | Nil
   | Shift            of variable_name * abstract_term
   | Reset            of abstract_term
-  | IntConst         of int
-  | BoolConst        of bool
 
 
 let rec subst_mono_type (ty : mono_type) (i : Typevar.t) (tynew : mono_type) =
@@ -69,6 +72,7 @@ let rec string_of_source_term sast =
     | SrcReset(sast1)                       -> "(reset " ^ (iter sast1) ^ ")"
     | SrcIntConst(nc)                       -> string_of_int nc
     | SrcBoolConst(bc)                      -> string_of_bool bc
+    | SrcNil                                -> "[]"
 
 
 let rec string_of_mono_type (srcty : mono_type) =
@@ -85,6 +89,7 @@ let rec string_of_mono_type (srcty : mono_type) =
     | BoolType                               -> "bool"
     | FuncType(tydom, tycod, tyans1, tyans2) -> (iter_enclose tydom) ^ " / " ^ (iter_enclose tyans1) ^
                                                   " -> " ^ (iter_enclose tycod) ^ " / " ^ (iter tyans2)
+    | ListType(tycnt)                        -> (iter_enclose tycnt) ^ " list"
 
 let rec string_of_poly_type (pty : poly_type) =
   let iter = string_of_poly_type in
@@ -107,6 +112,7 @@ let rec string_of_abstract_term (ast : abstract_term) =
     | Reset(ast1)                        -> "(reset " ^ (iter ast1) ^ ")"
     | IntConst(ic)                       -> string_of_int ic
     | BoolConst(bc)                      -> string_of_bool bc
+    | Nil                                -> "[]"
 
 
 let rec erase_range_of_mono_type (srcty : mono_type) =

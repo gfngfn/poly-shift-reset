@@ -35,6 +35,7 @@ let rec apply_to_mono_type (theta : t) (ty : mono_type) =
           | Some(tyaft) -> tyaft
         end
     | FuncType(tydom, tycod, tyans1, tyans2) -> (FuncType(iter tydom, iter tycod, iter tyans1, iter tyans2), tyrng)
+    | ListType(tycnt) -> (ListType(iter tycnt), tyrng)
     | _ -> ty
 
 
@@ -49,6 +50,7 @@ let rec apply_to_abstract_term (theta : t) (ast : abstract_term) =
     | FixPointOfLambda(varf, varx, ast1)      -> FixPointOfLambda(varf, varx, iter ast1)
     | LetIn(varnm, ast1, ast2)                -> LetIn(varnm, iter ast1, iter ast2)
     | IfThenElse(ast0, ast1, ast2)            -> IfThenElse(iter ast0, iter ast1, iter ast2)
+    | Nil                                     -> Nil
     | Shift(varnm, ast1)                      -> Shift(varnm, iter ast1)
     | Reset(ast1)                             -> Reset(iter ast1)
   in
@@ -80,6 +82,7 @@ let rec occurs (i : Typevar.t) ((tymain, _) : mono_type) =
     match tymain with
     | TypeVariable(j)  when Typevar.eq i j -> true
     | FuncType(t1, t2, t3, t4)             -> (iter t1) || (iter t2) || (iter t3) || (iter t4)
+    | ListType(t1)                         -> iter t1
     | _                                    -> false
 
 
@@ -118,6 +121,9 @@ let rec unify_sub (acctheta : t) (eqnlst : (mono_type * mono_type) list) =
 
         | (FuncType(tydom1, tycod1, tya1, tyb1), FuncType(tydom2, tycod2, tya2, tyb2)) ->
             unify_sub acctheta (List.append [(tydom1, tydom2); (tycod1, tycod2); (tya1, tya2); (tyb1, tyb2)] tail)
+
+        | (ListType(tycnt1), ListType(tycnt2)) ->
+            unify_sub acctheta ((tycnt1, tycnt2) :: tail)
 
         | _                  -> raise InternalContradictionError
       end
