@@ -61,8 +61,8 @@ let rec typecheck_pure (thetapre : Subst.t) (tyenv : Typeenv.t) (sast : source_t
     | SrcReset(sast1) ->
         let (vG, _) = fresh () in
         let (e1, ty1, tyans1, theta1) = typecheck thetapre tyenv vG sast1 in
-        let thetaU = Subst.unify vG tyans1 in
-        let tyres = thetaU @> ty1 in
+        let thetaU = Subst.unify vG ty1 in
+        let tyres = thetaU @> tyans1 in
           ((Reset(e1), tyres), tyres, thetaU @@ theta1)
 
     | SrcIntConst(ic)  -> let tyres = (IntType, rng) in ((IntConst(ic), tyres), tyres, thetapre)
@@ -122,13 +122,13 @@ and typecheck (thetapre : Subst.t) (tyenv : Typeenv.t) (tyans : mono_type) (sast
           ((IfThenElse(e0, e1, e2), tyres), tyres, thetaW @> tyans0, thetaWVU2)
 
     | SrcShift((varnm, varrng), sast1) ->
-        let (vT, _) = fresh () in
+        let (vR, _) = fresh () in
         let (vX, iX) = fresh () in
-        let pty = Forall(iX, Mono((FuncType(vT, tyans, vX, vX), Range.dummy "tc-shift"))) in
+        let pty = Forall(iX, Mono((FuncType(vR, tyans, vX, vX), Range.dummy "tc-shift"))) in
         let (vG, _) = fresh () in
         let (e1, ty1, tyB, theta1) = typecheck thetapre (Typeenv.add tyenv varnm pty) vG sast1 in
         let thetaU = Subst.unify (theta1 @> vG) ty1 in
-        let tyres = thetaU @> vT in
+        let tyres = thetaU @> vR in
           ((Shift(varnm, e1), tyres), tyres, thetaU @> tyB, thetaU @@ theta1)
 
             

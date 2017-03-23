@@ -1,7 +1,6 @@
 letrec f x =
-  if x >= 3 then true else
+  if x >= 3 then (shift k. true) else
     f (x + 1)
 in
 let g x = f (head x) in
-let h x = g (head x) in
-  h ((1 :: []) :: [])
+  reset (g (1 :: 2 :: []))
