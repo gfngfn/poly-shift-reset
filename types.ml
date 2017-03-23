@@ -1,14 +1,11 @@
 
-let print_for_debug msg = ()
-
-
 type variable_name = string
 
 type mono_type = mono_type_main * Range.t
 and mono_type_main =
-  | TypeVariable of Typevar.t
   | IntType
   | BoolType
+  | TypeVariable of Typevar.t
   | FuncType     of mono_type * mono_type * mono_type * mono_type
 
 
@@ -18,6 +15,8 @@ type poly_type =
 
 type source_term = source_term_main * Range.t
 and source_term_main =
+  | SrcIntConst   of int
+  | SrcBoolConst  of bool
   | SrcVar        of variable_name
   | SrcApply      of source_term * source_term
   | SrcLambda     of (variable_name * Range.t) * source_term
@@ -26,8 +25,6 @@ and source_term_main =
   | SrcIfThenElse of source_term * source_term * source_term
   | SrcShift      of (variable_name * Range.t) * source_term
   | SrcReset      of source_term
-  | SrcIntConst   of int
-  | SrcBoolConst  of bool
 
 type abstract_term = abstract_term_main * mono_type
 and abstract_term_main =
