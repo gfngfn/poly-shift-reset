@@ -219,23 +219,23 @@ and eval_int env evtm =
 let main (env : Evalenv.t) (rnenv : Rename.env) (ast : abstract_term) =
   let (_, ty) = ast in
   let tvidM = Rename.fresh () in
-    eval env ((transform_into_eval_style rnenv (Reset(ast), ty)) *@ (tvidM @--> (~@ tvidM)))
+  let evtm = ((transform_into_eval_style rnenv (Reset(ast), ty)) *@ (tvidM @--> (~@ tvidM))) in
+  let _ = print_endline (string_of_eval_term evtm) in (* for debug *)
+    eval env evtm
 
 
 let primitives =
   let binary op =
-    let evidP = Rename.fresh () in
     let evidQ = Rename.fresh () in
     let evidA = Rename.fresh () in
     let evidB = Rename.fresh () in
     let evidK = Rename.fresh () in
-      (evidP @--> ((~@ evidP) *@ (evidA @--> evidQ @--> ((~@ evidQ) *@ (evidB @--> evidK @--> ((~@ evidK) *@ (op (~@ evidA) (~@ evidB))))))))
+      (evidA @--> evidQ @--> ((~@ evidQ) *@ (evidB @--> evidK @--> ((~@ evidK) *@ (op (~@ evidA) (~@ evidB))))))
   in
   let unary op =
-    let evidP = Rename.fresh () in
     let evidA = Rename.fresh () in
     let evidK = Rename.fresh () in
-      (evidP @--> ((~@ evidP) *@ (evidA @--> evidK @--> ((~@ evidK) *@ (op (~@ evidA))))))
+      (evidA @--> evidK @--> ((~@ evidK) *@ (op (~@ evidA))))
   in
     [
       ("+",   binary (fun x y -> EvPrimPlus(x, y)));
