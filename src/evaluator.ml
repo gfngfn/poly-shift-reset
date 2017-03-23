@@ -1,5 +1,8 @@
 open Types
 
+let print_for_debug_evaluator msg =
+  ()
+
 exception EmptyList
 exception DivisionByZero
 exception Bug of string
@@ -199,11 +202,7 @@ let rec eval (env : Evalenv.t) (evtm : eval_term) =
   | EvPrimNot(evtm)                 -> let bc = eval_bool env evtm in EvBoolConst(not bc)
 
   | EvPrimIsEmpty(evtm)             -> eval_list env evtm (fun () -> EvBoolConst(true)) (fun _ _ -> EvBoolConst(false))
-  | EvPrimListHead(evtm)            ->
-      let _ = print_string ((string_of_eval_term evtm) ^ " ---> ") in (* for debug *)
-        eval_list env evtm (fun () -> raise EmptyList) (fun vH vT ->
-          let _ = print_endline (string_of_eval_term (EvCons(vH, vT))) in (* for debug *)
-            vH)
+  | EvPrimListHead(evtm)            -> eval_list env evtm (fun () -> raise EmptyList) (fun vH vT -> vH)
   | EvPrimListTail(evtm)            -> eval_list env evtm (fun () -> raise EmptyList) (fun vH vT -> vT)
 
 
@@ -242,7 +241,7 @@ let main (env : Evalenv.t) (rnenv : Rename.env) (ast : abstract_term) =
   let (_, ty) = ast in
   let tvidM = Rename.fresh () in
   let evtm = ((transform_into_eval_style rnenv (Reset(ast), ty)) *@ (tvidM @--> (~@ tvidM))) in
-  let _ = print_endline (string_of_eval_term evtm) in (* for debug *)
+  let _ = print_for_debug_evaluator (string_of_eval_term evtm) in (* for debug *)
     eval env evtm
 
 
