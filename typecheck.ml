@@ -96,7 +96,6 @@ and typecheck (thetapre : Subst.t) (tyenv : Typeenv.t) (tyans : mono_type) (sast
         let thetaU = Subst.unify ty1 (FuncType(theta1 @> ty2, vR, tyans, theta1 @> vB), Range.dummy "tc-apply") in
         let tyres = thetaU @> vR in
         let _ = print_for_debug_typecheck ("App2 " ^ (string_of_source_term sast) ^ " : " ^ (string_of_mono_type tyres)) in (*for debug*)
-(*        let _ = Subst.show (thetaU @@ theta1) in (*for debug*) *)
           ((Apply(e1, e2), tyres), tyres, thetaU @> tyD, thetaU @@ theta1)
 
     | SrcLetIn((varnm, varrng), sast1, sast2) ->

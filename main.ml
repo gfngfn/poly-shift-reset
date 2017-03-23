@@ -39,6 +39,7 @@ let _ =
         let (vA, _) = Typecheck.fresh () in
         let (e, ty, tyans, theta) = Typecheck.typecheck Subst.empty Primitives.type_environment vA sast in
         let et = Subst.apply_to_abstract_term theta e in
+        let _ = Evaluator.main et in
           print_endline (string_of_abstract_term et)
       with
       | Typecheck.UndefinedVariable(varnm, rng) ->
@@ -52,6 +53,7 @@ let _ =
             NormalLine ("at " ^ (Range.to_string rng));
             NormalLine ("this expression in a fixed-point operator should be an abstraction.");
           ]
+
       | Subst.InclusionError(ty1, ty2) ->
           let (range_desc, tyindeed, tyreq, additional) = generate_description ty1 ty2 in
             report_error "Typechecker" (List.append [
