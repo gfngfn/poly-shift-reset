@@ -187,7 +187,8 @@ and eval_int env evtm =
 
 let main (env : Evalenv.t) (rnenv : Rename.env) (ast : abstract_term) =
   let (_, ty) = ast in
-    eval env (transform_into_eval_style rnenv (Reset(ast), ty))
+  let tvidM = Rename.fresh () in
+    eval env ((transform_into_eval_style rnenv (Reset(ast), ty)) *@ (tvidM @--> (~@ tvidM)))
 
 
 let primitives =
