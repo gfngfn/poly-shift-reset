@@ -8,15 +8,30 @@ let type_environment =
   let v n = Typevar.of_int n in
   let tv n = (TypeVariable(v n), Range.dummy "prim-var") in
     List.fold_right (fun (varnm, pty) tyenv -> Typeenv.add tyenv varnm pty) [
-      ("+",  Forall(v (-1), Forall(v (-2), Mono(ft it (ft it it (tv (-2))) (tv (-1))))));
-      ("-",  Forall(v (-1), Forall(v (-2), Mono(ft it (ft it it (tv (-2))) (tv (-1))))));
-      ("*",  Forall(v (-1), Forall(v (-2), Mono(ft it (ft it it (tv (-2))) (tv (-1))))));
-      ("/",  Forall(v (-1), Forall(v (-2), Mono(ft it (ft it it (tv (-2))) (tv (-1))))));
-      ("==", Forall(v (-1), Forall(v (-2), Mono(ft it (ft it bt (tv (-2))) (tv (-1))))));
-      ("<=", Forall(v (-1), Forall(v (-2), Mono(ft it (ft it bt (tv (-2))) (tv (-1))))));
-      (">=", Forall(v (-1), Forall(v (-2), Mono(ft it (ft it bt (tv (-2))) (tv (-1))))));
-      ("<",  Forall(v (-1), Forall(v (-2), Mono(ft it (ft it bt (tv (-2))) (tv (-1))))));
-      (">",  Forall(v (-1), Forall(v (-2), Mono(ft it (ft it bt (tv (-2))) (tv (-1))))));
-      ("&&", Forall(v (-1), Forall(v (-2), Mono(ft bt (ft bt bt (tv (-2))) (tv (-1))))));
-      ("||", Forall(v (-1), Forall(v (-2), Mono(ft bt (ft bt bt (tv (-2))) (tv (-1))))));
+      ("+",   Forall(v (-1), Forall(v (-2), Mono(ft it (ft it it (tv (-2))) (tv (-1))))));
+      ("-",   Forall(v (-1), Forall(v (-2), Mono(ft it (ft it it (tv (-2))) (tv (-1))))));
+      ("*",   Forall(v (-1), Forall(v (-2), Mono(ft it (ft it it (tv (-2))) (tv (-1))))));
+      ("/",   Forall(v (-1), Forall(v (-2), Mono(ft it (ft it it (tv (-2))) (tv (-1))))));
+      ("==",  Forall(v (-1), Forall(v (-2), Mono(ft it (ft it bt (tv (-2))) (tv (-1))))));
+      ("<=",  Forall(v (-1), Forall(v (-2), Mono(ft it (ft it bt (tv (-2))) (tv (-1))))));
+      (">=",  Forall(v (-1), Forall(v (-2), Mono(ft it (ft it bt (tv (-2))) (tv (-1))))));
+      ("<",   Forall(v (-1), Forall(v (-2), Mono(ft it (ft it bt (tv (-2))) (tv (-1))))));
+      (">",   Forall(v (-1), Forall(v (-2), Mono(ft it (ft it bt (tv (-2))) (tv (-1))))));
+      ("&&",  Forall(v (-1), Forall(v (-2), Mono(ft bt (ft bt bt (tv (-2))) (tv (-1))))));
+      ("||",  Forall(v (-1), Forall(v (-2), Mono(ft bt (ft bt bt (tv (-2))) (tv (-1))))));
+      ("not", Forall(v (-1), Mono(ft bt bt (tv (-1)))));
     ] Typeenv.empty
+
+
+let eval_environment =
+  let env = Evaluator.Evalenv.create () in
+  begin
+    Rename.initialize () ;
+    let rnenv =
+      List.fold_right (fun (opnm, evtm) rnenv ->
+        let (rnenvnew, evid) = Rename.add rnenv opnm in
+        begin Evaluator.Evalenv.add env evid evtm ; rnenvnew end
+      ) Evaluator.primitives Rename.empty
+    in
+      (env, rnenv)
+  end

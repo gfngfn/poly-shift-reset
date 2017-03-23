@@ -39,8 +39,12 @@ let _ =
         let (vA, _) = Typecheck.fresh () in
         let (e, ty, tyans, theta) = Typecheck.typecheck Subst.empty Primitives.type_environment vA sast in
         let et = Subst.apply_to_abstract_term theta e in
-        let _ = Evaluator.main et in
-          print_endline (string_of_abstract_term et)
+        let (env, rnenv) = Primitives.eval_environment in
+        let valueres = Evaluator.main env rnenv et in
+        begin
+          print_endline (string_of_abstract_term et) ;
+          print_endline (Evaluator.string_of_eval_term valueres) ;
+        end
       with
       | Typecheck.UndefinedVariable(varnm, rng) ->
           report_error "Typechecker" [

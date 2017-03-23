@@ -1,47 +1,5 @@
 open Types
 
-module Rename : sig
-  type id
-  type env
-  val initialize : unit -> unit
-  val empty : env
-  val fresh : unit -> id
-  val add : env -> variable_name -> (env * id)
-  val find : env -> variable_name -> id
-end = struct
-  type id = int
-  type env = (variable_name * int) list
-
-  let current_rename_id = ref 0
-
-  let initialize () =
-    current_rename_id := 0
-
-  let empty = []
-
-  let fresh () =
-    let evid = !current_rename_id in
-      current_rename_id := evid + 1 ;
-      evid
-
-  let add (rnenv : env) (varnm : variable_name) =
-    let evid = !current_rename_id in
-    let rec aux acc lst =
-      match lst with
-      | []                             -> (varnm, evid) :: rnenv
-      | (v, e) :: tail  when v = varnm -> List.rev_append acc ((v, e) :: tail)
-      | (v, e) :: tail                 -> aux ((v, e) :: acc) tail
-    in
-      current_rename_id := evid + 1 ;
-      (aux [] rnenv, evid)
-
-  let rec find (rnenv : env) (varnm : variable_name) =
-    match rnenv with
-    | []                             -> assert false
-    | (v, e) :: tail  when v = varnm -> e
-    | _ :: tail                      -> find tail varnm
-end
-
 
 type eval_term =
   | EvIntConst         of int
@@ -49,15 +7,42 @@ type eval_term =
   | EvVar              of Rename.id
   | EvApply            of eval_term * eval_term
   | EvLambda           of Rename.id * eval_term
-  | EvFixPointOfLambda of Rename.id * eval_term
+  | EvFixPointOfLambda of Rename.id * Rename.id * eval_term
   | EvIfThenElse       of eval_term * eval_term * eval_term
+  | EvPrimPlus         of eval_term * eval_term
+  | EvPrimMinus        of eval_term * eval_term
+  | EvPrimTimes        of eval_term * eval_term
+  | EvPrimDivides      of eval_term * eval_term
+  | EvPrimEqual        of eval_term * eval_term
+  | EvPrimLeq          of eval_term * eval_term
+  | EvPrimGeq          of eval_term * eval_term
+  | EvPrimLessThan     of eval_term * eval_term
+  | EvPrimGreaterThan  of eval_term * eval_term
+  | EvPrimAnd          of eval_term * eval_term
+  | EvPrimOr           of eval_term * eval_term
+  | EvPrimNot          of eval_term
+
+
+let rec string_of_eval_term evtm =
+  let iter = string_of_eval_term in
+  let rs = Rename.string_of_id in
+    match evtm with
+    | EvIntConst(ic)                  -> string_of_int ic
+    | EvBoolConst(bc)                 -> string_of_bool bc
+    | EvVar(id)                       -> rs id
+    | EvApply(t1, t2)                 -> "(" ^ (iter t1) ^ " " ^ (iter t2) ^ ")"
+    | EvLambda(id, t)                 -> "(\\" ^ (rs id) ^ ". " ^ (iter t) ^ ")"
+    | EvFixPointOfLambda(idf, idx, t) -> "(fix " ^ (rs idf) ^ ". \\" ^ (rs idx) ^ ". " ^ (iter t) ^ ")"
+    | EvIfThenElse(t0, t1, t2)        -> "(if " ^ (iter t0) ^ " then " ^ (iter t1) ^ " else " ^ (iter t2) ^ ")"
+    | _                               -> "(primitive)"
+
+let ( @--> ) evid evtm = EvLambda(evid, evtm)
+let ( ~@ ) evid = EvVar(evid)
+let ( *@ ) evtm1 evtm2 = EvApply(evtm1, evtm2)
+let letin evid evtm1 evtm2 = ((evid @--> evtm2) *@ evtm1)
 
 
 let rec transform_into_eval_style (rnenv : Rename.env) ((astmain, _) : abstract_term) =
-  let ( @--> ) evid evtm = EvLambda(evid, evtm) in
-  let ( ~@ ) evid = EvVar(evid) in
-  let ( *@ ) evtm1 evtm2 = EvApply(evtm1, evtm2) in
-  let letin evid evtm1 evtm2 = ((evid @--> evtm2) *@ evtm1) in
   let iter = transform_into_eval_style in
     match astmain with
     | IntConst(ic)  -> let evidK = Rename.fresh () in (evidK @--> (EvVar(evidK) *@ EvIntConst(ic)))
@@ -82,7 +67,7 @@ let rec transform_into_eval_style (rnenv : Rename.env) ((astmain, _) : abstract_
         let evidK = Rename.fresh () in
         let (rnenvnewf, evidf) = Rename.add rnenv varf in
         let (rnenvnewx, evidx) = Rename.add rnenvnewf varx in
-          (evidK @--> ((~@ evidK) *@ (EvFixPointOfLambda(evidx, iter rnenvnewx ast1))))
+          (evidK @--> ((~@ evidK) *@ (EvFixPointOfLambda(evidf, evidx, iter rnenvnewx ast1))))
 
     | LetIn(varnm, ast1, ast2) ->
         let evidK = Rename.fresh () in
@@ -116,10 +101,109 @@ let rec transform_into_eval_style (rnenv : Rename.env) ((astmain, _) : abstract_
             ((~@ evidK) *@ ((iter rnenv ast1) *@ (evidM @--> (~@ evidM)))))
 
 
-let rec eval env evtm =
-  evtm (*temporary*)
+module Evalenv : sig
+  type t
+
+  val create : unit -> t
+  val add : t -> Rename.id -> eval_term -> unit
+  val find : t -> Rename.id -> eval_term
+end = struct
+  type t = (Rename.id, eval_term) Hashtbl.t
+
+  let create : unit -> t = (fun () -> Hashtbl.create 1024)
+
+  let add (env : t) (evid : Rename.id) (evtm : eval_term) = Hashtbl.add env evid evtm
+
+  let find (env : t) (evid : Rename.id) = Hashtbl.find env evid
+end
 
 
-let main (ast : abstract_term) =
+let rec eval (env : Evalenv.t) (evtm : eval_term) =
+  match evtm with
+  | ( EvIntConst(_)
+    | EvBoolConst(_)
+    | EvLambda(_, _)
+    | EvFixPointOfLambda(_, _, _) )   -> evtm
+
+  | EvVar(evid)                       -> Evalenv.find env evid
+
+  | EvIfThenElse(evtm0, evtm1, evtm2) ->
+      if eval_bool env evtm0 then eval env evtm1 else eval env evtm2
+
+  | EvApply(evtm1, evtm2) ->
+     let value1 = eval env evtm1 in
+      begin
+        match value1 with
+        | EvLambda(evid, evtm1sub) ->
+            let value2 = eval env evtm2 in
+            begin Evalenv.add env evid value2 ; eval env evtm1sub end
+
+        | EvFixPointOfLambda(evidf, evidx, evtm1sub) ->
+            let value2 = eval env evtm2 in
+            begin Evalenv.add env evidf value1 ; Evalenv.add env evidx value2 ; eval env evtm1sub end
+
+        | _ -> assert false
+      end
+
+  | EvPrimPlus(evtm1, evtm2)        -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvIntConst(ic1 + ic2)
+  | EvPrimMinus(evtm1, evtm2)       -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvIntConst(ic1 - ic2)
+  | EvPrimTimes(evtm1, evtm2)       -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvIntConst(ic1 * ic2)
+  | EvPrimDivides(evtm1, evtm2)     -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvIntConst(ic1 / ic2)
+
+  | EvPrimEqual(evtm1, evtm2)       -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvBoolConst(ic1 = ic2)
+  | EvPrimLeq(evtm1, evtm2)         -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvBoolConst(ic1 <= ic2)
+  | EvPrimGeq(evtm1, evtm2)         -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvBoolConst(ic1 >= ic2)
+  | EvPrimLessThan(evtm1, evtm2)    -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvBoolConst(ic1 < ic2)
+  | EvPrimGreaterThan(evtm1, evtm2) -> let (ic1, ic2) = eval_int_pair env (evtm1, evtm2) in EvBoolConst(ic1 > ic2)
+
+  | EvPrimAnd(evtm1, evtm2)         -> let (bc1, bc2) = eval_bool_pair env (evtm1, evtm2) in EvBoolConst(bc1 && bc2)
+  | EvPrimOr(evtm1, evtm2)          -> let (bc1, bc2) = eval_bool_pair env (evtm1, evtm2) in EvBoolConst(bc1 || bc2)
+  | EvPrimNot(evtm)                 -> let bc = eval_bool env evtm in EvBoolConst(not bc)
+
+
+and eval_int_pair env (evtm1, evtm2) =
+  let ic1 = eval_int env evtm1 in
+  let ic2 = eval_int env evtm2 in
+    (ic1, ic2)
+
+
+and eval_bool_pair env (evtm1, evtm2) =
+  let bc1 = eval_bool env evtm1 in
+  let bc2 = eval_bool env evtm2 in
+    (bc1, bc2)
+
+
+and eval_bool env evtm =
+  match eval env evtm with
+  | EvBoolConst(bc) -> bc
+  | _               -> assert false
+
+
+and eval_int env evtm =
+  match eval env evtm with
+  | EvIntConst(ic) -> ic
+  | _              -> assert false
+
+
+let main (env : Evalenv.t) (rnenv : Rename.env) (ast : abstract_term) =
   let (_, ty) = ast in
-    eval (transform_into_eval_style Rename.empty (Reset(ast), ty))
+    eval env (transform_into_eval_style rnenv (Reset(ast), ty))
+
+
+let primitives =
+  let evid1 = Rename.fresh () in
+  let evid2 = Rename.fresh () in
+    [
+      ("+",   (evid1 @--> evid2 @--> (EvPrimPlus(~@ evid1, ~@ evid2))));
+      ("-",   (evid1 @--> evid2 @--> (EvPrimMinus(~@ evid1, ~@ evid2))));
+      ("*",   (evid1 @--> evid2 @--> (EvPrimTimes(~@ evid1, ~@ evid2))));
+      ("/",   (evid1 @--> evid2 @--> (EvPrimDivides(~@ evid1, ~@ evid2))));
+      ("==",  (evid1 @--> evid2 @--> (EvPrimEqual(~@ evid1, ~@ evid2))));
+      ("<=",  (evid1 @--> evid2 @--> (EvPrimLeq(~@ evid1, ~@ evid2))));
+      (">=",  (evid1 @--> evid2 @--> (EvPrimGeq(~@ evid1, ~@ evid2))));
+      ("<",   (evid1 @--> evid2 @--> (EvPrimLessThan(~@ evid1, ~@ evid2))));
+      (">",   (evid1 @--> evid2 @--> (EvPrimGreaterThan(~@ evid1, ~@ evid2))));
+      ("&&",  (evid1 @--> evid2 @--> (EvPrimAnd(~@ evid1, ~@ evid2))));
+      ("||",  (evid1 @--> evid2 @--> (EvPrimOr(~@ evid1, ~@ evid2))));
+      ("not", (evid1 @--> (EvPrimNot(~@ evid1))));
+    ]
