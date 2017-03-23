@@ -28,16 +28,16 @@ and source_term_main =
 
 type abstract_term = abstract_term_main * mono_type
 and abstract_term_main =
-  | Var        of variable_name
-  | Apply      of abstract_term * abstract_term
-  | Lambda     of variable_name * abstract_term
-  | FixPoint   of variable_name * abstract_term
-  | LetIn      of variable_name * abstract_term * abstract_term
-  | IfThenElse of abstract_term * abstract_term * abstract_term
-  | Shift      of variable_name * abstract_term
-  | Reset      of abstract_term
-  | IntConst   of int
-  | BoolConst  of bool
+  | Var              of variable_name
+  | Apply            of abstract_term * abstract_term
+  | Lambda           of variable_name * abstract_term
+  | FixPointOfLambda of variable_name * variable_name * abstract_term
+  | LetIn            of variable_name * abstract_term * abstract_term
+  | IfThenElse       of abstract_term * abstract_term * abstract_term
+  | Shift            of variable_name * abstract_term
+  | Reset            of abstract_term
+  | IntConst         of int
+  | BoolConst        of bool
 
 
 let rec subst_mono_type (ty : mono_type) (i : Typevar.t) (tynew : mono_type) =
@@ -97,16 +97,16 @@ let rec string_of_abstract_term (ast : abstract_term) =
   let iter = string_of_abstract_term in
   let (astmain, ty) = ast in
     match astmain with
-    | Var(varnm)                   -> varnm
-    | Apply(ast1, ast2)            -> "(" ^ (iter ast1) ^ " " ^ (iter ast2) ^ ")"
-    | Lambda(varnm, ast1)          -> "((\\" ^ varnm ^ ". " ^ (iter ast1) ^ ") : " ^ (string_of_mono_type ty) ^ ")"
-    | FixPoint(varnm, ast1)        -> "(fix " ^ varnm ^ ". " ^ (iter ast1) ^ ")"
-    | LetIn(varnm, ast1, ast2)     -> "(let " ^ varnm ^ " = " ^ (iter ast1) ^ " in " ^ (iter ast2) ^ ")"
-    | IfThenElse(ast0, ast1, ast2) -> "(if " ^ (iter ast0) ^ " then " ^ (iter ast1) ^ " else " ^ (iter ast2) ^ ")"
-    | Shift(varnm, ast1)           -> "(shift " ^ varnm ^ ". " ^ (iter ast1) ^ ")"
-    | Reset(ast1)                  -> "(reset " ^ (iter ast1) ^ ")"
-    | IntConst(ic)                 -> string_of_int ic
-    | BoolConst(bc)                -> string_of_bool bc
+    | Var(varnm)                         -> varnm
+    | Apply(ast1, ast2)                  -> "(" ^ (iter ast1) ^ " " ^ (iter ast2) ^ ")"
+    | Lambda(varnm, ast1)                -> "((\\" ^ varnm ^ ". " ^ (iter ast1) ^ ") : " ^ (string_of_mono_type ty) ^ ")"
+    | FixPointOfLambda(varf, varx, ast1) -> "(fix " ^ varf ^ ". \\" ^ varx ^ ". " ^ (iter ast1) ^ ")"
+    | LetIn(varnm, ast1, ast2)           -> "(let " ^ varnm ^ " = " ^ (iter ast1) ^ " in " ^ (iter ast2) ^ ")"
+    | IfThenElse(ast0, ast1, ast2)       -> "(if " ^ (iter ast0) ^ " then " ^ (iter ast1) ^ " else " ^ (iter ast2) ^ ")"
+    | Shift(varnm, ast1)                 -> "(shift " ^ varnm ^ ". " ^ (iter ast1) ^ ")"
+    | Reset(ast1)                        -> "(reset " ^ (iter ast1) ^ ")"
+    | IntConst(ic)                       -> string_of_int ic
+    | BoolConst(bc)                      -> string_of_bool bc
 
 
 let rec erase_range_of_mono_type (srcty : mono_type) =

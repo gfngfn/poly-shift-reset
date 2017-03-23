@@ -47,6 +47,11 @@ let _ =
             NormalLine("undefined variable '" ^ varnm ^ "'.");
           ]
 
+      | Typecheck.ValueRestriction(rng) ->
+          report_error "Typechecker" [
+            NormalLine ("at " ^ (Range.to_string rng));
+            NormalLine ("this expression in a fixed-point operator should be an abstraction.");
+          ]
       | Subst.InclusionError(ty1, ty2) ->
           let (range_desc, tyindeed, tyreq, additional) = generate_description ty1 ty2 in
             report_error "Typechecker" (List.append [

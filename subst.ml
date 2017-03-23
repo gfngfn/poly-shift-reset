@@ -46,7 +46,7 @@ let rec apply_to_abstract_term (theta : t) (ast : abstract_term) =
     | ( Var(_) | IntConst(_) | BoolConst(_) ) -> astmain
     | Apply(ast1, ast2)                       -> Apply(iter ast1, iter ast2)
     | Lambda(varnm, ast1)                     -> Lambda(varnm, iter ast1)
-    | FixPoint(varnm, ast1)                   -> FixPoint(varnm, iter ast1)
+    | FixPointOfLambda(varf, varx, ast1)      -> FixPointOfLambda(varf, varx, iter ast1)
     | LetIn(varnm, ast1, ast2)                -> LetIn(varnm, iter ast1, iter ast2)
     | IfThenElse(ast0, ast1, ast2)            -> IfThenElse(iter ast0, iter ast1, iter ast2)
     | Shift(varnm, ast1)                      -> Shift(varnm, iter ast1)
@@ -85,9 +85,11 @@ let rec occurs (i : Typevar.t) ((tymain, _) : mono_type) =
 
 let rec unify_sub (acctheta : t) (eqnlst : (mono_type * mono_type) list) =
   let neweqnlst = List.map (fun (ty1, ty2) -> (apply_to_mono_type acctheta ty1, apply_to_mono_type acctheta ty2)) eqnlst in
+(*
   let _ = show acctheta in (*for debug*)
   let _ = List.iter (fun (ty1, ty2) -> print_string ("[" ^ (string_of_mono_type ty1) ^ "] = [" ^ (string_of_mono_type ty2) ^ "], ")) neweqnlst in (*for debug*)
   let _ = print_endline "$" in (*for debug*)
+*)
   match neweqnlst with
   | []                                                           -> acctheta
   | (((tymain1, rng1) as ty1), ((tymain2, rng2) as ty2)) :: tail ->
@@ -123,7 +125,6 @@ let rec unify_sub (acctheta : t) (eqnlst : (mono_type * mono_type) list) =
 
 let unify (ty1 : mono_type) (ty2 : mono_type) =
   try
-    let _ = print_endline ("Unify [" ^ (string_of_mono_type ty1) ^ "] = [" ^ (string_of_mono_type ty2) ^ "]") in (*for debug*)
     unify_sub empty [(ty1, ty2)]
   with
   | InternalInclusionError     -> raise (InclusionError(ty1, ty2))
