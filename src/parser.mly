@@ -125,8 +125,10 @@ xpbot:
   | VAR                   { let (varnm, rng) = $1 in (SrcVar(varnm), rng) }
   | LPAREN binop RPAREN   { let (opnm, _) = $2 in (SrcVar(opnm), make_range (Token $1) (Token $3)) }
   | LPAREN xplet RPAREN   { let (utastmain, _) = $2 in (utastmain, make_range (Token $1) (Token $3)) }
-  | BLIST xplist ELIST    { (SrcNil, make_range (Token $1) (Token $3)) }
+  | BLIST xplist ELIST    { let (utastmain, _) = $2 in (utastmain, make_range (Token $1) (Token $3)) }
 ;
 xplist:
   |                        { (SrcNil, Range.dummy "parse-nil") }
-  | xplet LISTPUNCT xplist { (SrcApply((SrcApply((SrcVar("::"), $2), $1), Range.dummy "parse-list"), $3), make_range (Source $1) (Source $3)) }
+  | xplet                  { (SrcApply((SrcApply((SrcVar("::"), Range.dummy "parse-last-cons"), $1), Range.dummy "parse-list"),
+                                       (SrcNil, Range.dummy "parse-nil")), make_range (Source $1) (Source $1)) }
+  | xplet LISTPUNCT xplist { (SrcApply((SrcApply((SrcVar("::"), $2), $1), Range.dummy "parse-cons"), $3), make_range (Source $1) (Source $3)) }
