@@ -15,7 +15,7 @@
   let binary_operator left op right =
     let (opnm, oprng) = op in
     let rng = make_range (Source left) (Source right) in
-      (SrcApply((SrcApply((SrcVar(opnm), oprng), left), Range.dummy "lor"), right), rng)
+      (SrcApply((SrcApply((SrcVar(opnm), oprng), left), Range.dummy "binary_operator"), right), rng)
 
   let make_abstraction params sast =
     List.fold_right (fun param sa -> (SrcLambda(param, sa), Range.dummy "make_abstraction")) params sast
@@ -28,7 +28,7 @@
 %token<Range.t> LET LETREC IN IF THEN ELSE
 %token<Range.t> LPAREN RPAREN DEFEQ LAMBDA FIX DOT
 %token<Range.t> SHIFT RESET
-%token<Range.t> BLIST ELIST CONS
+%token<Range.t> BLIST ELIST CONS LISTPUNCT
 %token<Range.t> PLUS MINUS TIMES DIVIDES EQUAL GT LT GEQ LEQ LAND LOR TRUE FALSE
 
 %start main
@@ -46,7 +46,7 @@ xplet:
       }
   | LETREC VAR params DEFEQ xplet IN xplet {
         let rng = make_range (Token $1) (Source $7) in
-          (SrcLetIn($2, (SrcFixPoint($2, make_abstraction $3 $5), Range.dummy "letrec"), $7), rng)
+          (SrcLetIn($2, (SrcFixPoint($2, make_abstraction $3 $5), Range.dummy "parse-letrec"), $7), rng)
       }
   | xpif { $1 }
 ;
@@ -85,9 +85,12 @@ xprel:
   | xpcons relop xprel { binary_operator $1 $2 $3 }
   | xpcons             { $1 }
 ;
+consop:
+  | CONS { ("::", $1) }
+;
 xpcons:
-  | xptimes CONS xpcons { binary_operator $1 ("::", $2) $3 }
-  | xptimes             { $1 }
+  | xptimes consop xpcons { binary_operator $1 $2 $3 }
+  | xptimes               { $1 }
 ;
 timesop:
   | TIMES { ("*", $1) }  | DIVIDES { ("/", $1) }
@@ -113,7 +116,7 @@ binop:
   | relop   { $1 }
   | timesop { $1 }
   | plusop  { $1 }
-  | CONS    { ("::", $1) }
+  | consop  { $1 }
 ;
 xpbot:
   | INTCONST              { let (num, rng) = $1 in (SrcIntConst(num), rng) }
@@ -122,5 +125,8 @@ xpbot:
   | VAR                   { let (varnm, rng) = $1 in (SrcVar(varnm), rng) }
   | LPAREN binop RPAREN   { let (opnm, _) = $2 in (SrcVar(opnm), make_range (Token $1) (Token $3)) }
   | LPAREN xplet RPAREN   { let (utastmain, _) = $2 in (utastmain, make_range (Token $1) (Token $3)) }
-  | BLIST ELIST           { (SrcNil, make_range (Token $1) (Token $2)) }
+  | BLIST xplist ELIST    { (SrcNil, make_range (Token $1) (Token $3)) }
 ;
+xplist:
+  |                        { (SrcNil, Range.dummy "parse-nil") }
+  | xplet LISTPUNCT xplist { (SrcApply((SrcApply((SrcVar("::"), $2), $1), Range.dummy "parse-list"), $3), make_range (Source $1) (Source $3)) }

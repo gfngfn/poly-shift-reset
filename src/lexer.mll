@@ -37,6 +37,7 @@ rule expr = parse
   | "["  { BLIST(get_range lexbuf) }
   | "]"  { ELIST(get_range lexbuf) }
   | "::" { CONS(get_range lexbuf) }
+  | ";"  { LISTPUNCT(get_range lexbuf) }
   | (digit +) { INTCONST(int_of_string (Lexing.lexeme lexbuf), get_range lexbuf) }
   | identifier {
         let rng = get_range lexbuf in

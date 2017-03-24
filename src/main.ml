@@ -6,13 +6,13 @@ type console_line = NormalLine of string | DisplayLine of string
 let report_error (category : string) (lines : console_line list) =
   let rec aux lst =
     match lst with
-    | [] -> ()
+    | []                     -> ()
     | NormalLine(l) :: tail  -> begin print_endline ("    " ^ l) ; aux tail end
     | DisplayLine(l) :: tail -> begin print_endline ("      " ^ l) ; aux tail end
   in
   let first lst =
     match lst with
-    | [] -> ()
+    | []                     -> ()
     | NormalLine(l) :: tail  -> begin print_endline l ; aux tail end
     | DisplayLine(l) :: tail -> begin print_endline ("\n      " ^ l) ; aux tail end
   in
@@ -22,9 +22,9 @@ let report_error (category : string) (lines : console_line list) =
 
 let generate_description ((_, rng1) as ty1) ((_, rng2) as ty2) =
   match (Range.is_dummy rng1, Range.is_dummy rng2) with
-  | (true, true)   -> ("somewhere is wrong", ty1, ty2, [])
-  | (true, false)  -> ("at " ^ (Range.to_string rng2), ty2, ty1, [NormalLine("(" ^ Range.to_string rng1 ^ ")");]) (*for debug*)
-  | (false, true)  -> ("at " ^ (Range.to_string rng1), ty1, ty2, [NormalLine("(" ^ Range.to_string rng2 ^ ")");])
+  | (true, true)   -> ("somewhere is wrong:", ty1, ty2, [NormalLine((Range.to_string rng1) ^ " and " ^ (Range.to_string rng2))])
+  | (true, false)  -> ("at " ^ (Range.to_string rng2), ty2, ty1, [])
+  | (false, true)  -> ("at " ^ (Range.to_string rng1), ty1, ty2, [])
   | (false, false) -> ("at " ^ (Range.to_string rng1), ty1, ty2,
                         [NormalLine("This constraint is required by the expression at " ^ (Range.to_string rng2))])
 
@@ -58,7 +58,7 @@ let _ =
       | Typecheck.ValueRestriction(rng) ->
           report_error "Typechecker" [
             NormalLine ("at " ^ (Range.to_string rng));
-            NormalLine ("this expression in a fixed-point operator should be an abstraction.");
+            NormalLine ("the expression in a fixed-point operator should be syntactically an abstraction.");
           ]
 
       | Subst.InclusionError(ty1, ty2) ->
@@ -82,6 +82,6 @@ let _ =
             ] additional)
 
       | Evaluator.DivisionByZero -> report_error "Runtime" [ NormalLine("division by zero."); ]
-      | Evaluator.EmptyList      -> report_error "Runtime" [ NormalLine("empty list."); ]
+      | Evaluator.EmptyList      -> report_error "Runtime" [ NormalLine("application of head/tail to an empty list."); ]
       | Bug(s)                   -> report_error "*Bug*" [ NormalLine(s); ]
     end
